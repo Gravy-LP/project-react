@@ -1,0 +1,108 @@
+.account-menu-container {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 240px;
+  background: rgba(18, 22, 31, 0.95);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.95);
+  transform-origin: top right;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.account-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.account-dropdown-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.account-name {
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+.account-role {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.account-dropdown-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.account-item i {
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+}
+
+.account-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+}
+
+.account-item:hover i {
+  color: var(--color-accent);
+}
+
+.account-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 8px 0;
+}
+
+.account-item.logout {
+  color: #ef4444;
+}
+
+.account-item.logout i {
+  color: #ef4444;
+}
+
+.account-item.logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.account-item.logout:hover i {
+  color: #f87171;
+}
