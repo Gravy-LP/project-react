@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { supabase } from '../lib/supabase';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 
@@ -17,14 +18,17 @@ interface Booking {
   type: string | null;
   booking_accepted: boolean | null;
   notes: string | null;
+  profile_id: string | null;
 }
 
 export default function IncomingBookingsPage() {
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const highlightId = searchParams.get('highlight');
 
   const fetchBookings = useCallback(async () => {
@@ -37,7 +41,22 @@ export default function IncomingBookingsPage() {
     }
   }, [showToast]);
 
-  useEffect(() => { fetchBookings(); }, [fetchBookings]);
+  useEffect(() => { 
+    fetchBookings(); 
+
+    const channel = supabase
+      .channel('incoming-booking-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Booking' },
+        () => fetchBookings()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchBookings]);
 
   // Highlight effect
   useEffect(() => {
@@ -54,9 +73,17 @@ export default function IncomingBookingsPage() {
     }
   }, [highlightId, allBookings]);
 
-  const pendingBookings = allBookings.filter((b) => b.booking_accepted === null);
-  const acceptedBookings = allBookings.filter((b) => b.booking_accepted === true);
-  const refusedBookings = allBookings.filter((b) => b.booking_accepted === false);
+  const filteredBookings = allBookings.filter((b) => {
+    const search = searchQuery.toLowerCase().trim();
+    if (!search) return true;
+    const name = `${b.first_name} ${b.last_name || ''}`.toLowerCase();
+    const contact = `${b.e_mail || ''} ${b.phone_number || ''}`.toLowerCase();
+    return name.includes(search) || contact.includes(search);
+  });
+
+  const pendingBookings = filteredBookings.filter((b) => b.booking_accepted === null);
+  const acceptedBookings = filteredBookings.filter((b) => b.booking_accepted === true);
+  const refusedBookings = filteredBookings.filter((b) => b.booking_accepted === false);
 
   const getInitials = (name: string) =>
     name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -85,6 +112,7 @@ export default function IncomingBookingsPage() {
         showToast(json.error || "Errore durante l'eliminazione", 'error');
         return;
       }
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
       showToast('Prenotazione eliminata con successo!', 'success');
       setAllBookings((prev) => prev.filter((b) => b.booking_id_db !== id));
     } catch {
@@ -104,6 +132,7 @@ export default function IncomingBookingsPage() {
         showToast(json.error || "Errore durante l'aggiornamento", 'error');
         return;
       }
+      if (window.navigator.vibrate) window.navigator.vibrate(30);
       showToast(
         `Prenotazione ${status === null ? 'ripristinata' : status ? 'accettata' : 'rifiutata'} con successo!`,
         'success'
@@ -157,7 +186,13 @@ export default function IncomingBookingsPage() {
             {getInitials(`${booking.first_name} ${booking.last_name || ''}`)}
           </div>
           <div>
-            <div className="user-name">{booking.first_name} {booking.last_name}</div>
+            <div 
+              className="user-name" 
+              style={booking.profile_id ? { cursor: 'pointer', color: 'var(--color-accent)', textDecoration: 'underline' } : {}}
+              onClick={() => booking.profile_id && navigate(`/profile/${booking.profile_id}`)}
+            >
+              {booking.first_name} {booking.last_name}
+            </div>
             <div className="user-id">#{booking.booking_id_db.slice(0, 8)}</div>
           </div>
         </div>
@@ -213,8 +248,16 @@ export default function IncomingBookingsPage() {
         <div className="card-header">
           <h2>Prenotazioni in Arrivo</h2>
           <div className="filters">
+            <div className="local-search-wrapper">
+              <i className="ph ph-magnifying-glass" />
+              <input
+                type="text"
+                placeholder="Cerca prenotazione..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             <button className="btn btn-ghost btn-sm"><i className="ph ph-funnel" /> Filtra</button>
-            <button className="btn btn-ghost btn-sm"><i className="ph ph-download-simple" /> Esporta</button>
           </div>
         </div>
 

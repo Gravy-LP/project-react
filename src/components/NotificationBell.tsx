@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import { supabase } from '../lib/supabase';
 import '../styles/notifications.css';
 
 interface Booking {
@@ -31,6 +32,19 @@ export default function NotificationBell() {
       }
     }
     fetchNotifications();
+
+    const channel = supabase
+      .channel('notification-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Booking' },
+        () => fetchNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Close on click outside

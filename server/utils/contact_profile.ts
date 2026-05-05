@@ -31,6 +31,8 @@ export interface PatientProfile {
   last_name: string | null;
   e_mail: string | null;
   phone_number: string | null;
+  date_of_birth: string | null;
+  notes: string | null;
   booking_ids: string[] | null;
   created_at: string;
 }
@@ -59,6 +61,16 @@ async function appendBookingId(profileId: string, bookingId: string, current: st
     .update({ booking_ids: updated })
     .eq('id', profileId);
   if (error) throw new Error(`[contact_profile] appendBookingId failed: ${error.message}`);
+
+  // ALSO update the Booking record itself to point back to the profile
+  const { error: bErr } = await supabase
+    .from('Booking')
+    .update({ profile_id: profileId })
+    .eq('booking_id_db', bookingId);
+  
+  if (bErr) {
+    console.warn(`[contact_profile] Could not update profile_id on booking ${bookingId}: ${bErr.message}`);
+  }
 }
 
 /**
@@ -188,5 +200,12 @@ export async function resolveContactProfile(info: ContactInfo): Promise<ProfileR
     .single();
 
   if (insertErr) throw new Error(`[contact_profile] insert failed: ${insertErr.message}`);
+
+  // Update the booking with the new profile's ID
+  await supabase
+    .from('Booking')
+    .update({ profile_id: (created as PatientProfile).id })
+    .eq('booking_id_db', booking_id);
+
   return { action: 'created', profile: created as PatientProfile };
 }

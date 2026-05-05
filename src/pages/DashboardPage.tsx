@@ -12,6 +12,7 @@ interface Booking {
   booking_date: string | null;
   type: string | null;
   booking_accepted: boolean | null;
+  profile_id: string | null;
 }
 
 export default function DashboardPage() {
@@ -43,6 +44,20 @@ export default function DashboardPage() {
       setIncomingApts(incoming || []);
     }
     fetchData();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('booking-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Booking' },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Highlight effect
@@ -85,7 +100,9 @@ export default function DashboardPage() {
                         {getInitials(apt.first_name, apt.last_name)}
                       </div>
                       <div>
-                        <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
+                        <Link to={apt.profile_id ? `/profile/${apt.profile_id}` : '#'} className="patient-name-link">
+                          <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
+                        </Link>
                         <div className="appointment-service">{apt.type || 'Visita'}</div>
                       </div>
                     </div>
@@ -118,7 +135,9 @@ export default function DashboardPage() {
                         {getInitials(apt.first_name, apt.last_name)}
                       </div>
                       <div>
-                        <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
+                        <Link to={apt.profile_id ? `/profile/${apt.profile_id}` : '#'} className="patient-name-link">
+                          <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
+                        </Link>
                         <div className="appointment-service">{apt.type || 'Richiesta'}</div>
                       </div>
                     </div>

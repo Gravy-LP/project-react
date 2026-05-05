@@ -1,27 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { fetchPatients, deletePatient, type PatientProfile } from '../lib/api';
+import { fetchPatients, deletePatient, createPatient, createBooking, type PatientProfile } from '../lib/api';
+import { supabase } from '../lib/supabase';
+import Modal from '../components/Modal';
 import '../styles/rubrica.css';
+import '../styles/modal.css';
 
 export default function RubricaPage() {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false);
+  const [withBooking, setWithBooking] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const loadPatients = useCallback(async () => {
+    const { patients: data, error } = await fetchPatients();
+    if (error) {
+      showToast('Errore nel caricamento pazienti', 'error');
+      return;
+    }
+    setPatients(data || []);
+  }, [showToast]);
 
   useEffect(() => {
-    async function load() {
-      const { patients: data, error } = await fetchPatients();
-      if (error) {
-        showToast('Errore nel caricamento pazienti', 'error');
-        return;
-      }
-      setPatients(data || []);
-    }
-    load();
-  }, [showToast]);
+    loadPatients();
+
+    const channel = supabase
+      .channel('patient-profile-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'PatientProfile' },
+        () => loadPatients()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadPatients]);
 
   const getInitials = (first: string, last: string | null) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
@@ -47,6 +69,70 @@ export default function RubricaPage() {
     showToast('Profilo eliminato', 'success');
   };
 
+  const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    // Validation
+    if (!data.first_name || !data.last_name) {
+      showToast('Nome e cognome sono obbligatori', 'error');
+      return;
+    }
+    if (!data.e_mail && !data.phone_number) {
+      showToast('Fornire almeno un contatto (Email o Telefono)', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (withBooking) {
+        // Option B: Create via Booking route (auto-creates profile)
+        const res = await createBooking({
+          first_name: data.first_name as string,
+          last_name: data.last_name as string,
+          e_mail: data.e_mail as string,
+          phone_number: data.phone_number as string,
+          booking_date: data.booking_date as string,
+          type: data.type as string,
+          booking_accepted: true,
+          notes: data.notes as string
+        });
+
+        if (!res.success) {
+          showToast(res.error || 'Errore nella creazione', 'error');
+        } else {
+          showToast('Paziente e prenotazione creati!', 'success');
+          setShowModal(false);
+          loadPatients();
+        }
+      } else {
+        // Option A: Only create profile
+        const res = await createPatient({
+          first_name: data.first_name as string,
+          last_name: data.last_name as string,
+          e_mail: data.e_mail as string,
+          phone_number: data.phone_number as string,
+          date_of_birth: data.date_of_birth as string,
+          notes: data.notes as string
+        });
+
+        if (!res.success) {
+          showToast(res.error || 'Errore nella creazione', 'error');
+        } else {
+          showToast('Profilo paziente creato!', 'success');
+          setShowModal(false);
+          loadPatients();
+        }
+      }
+    } catch (err) {
+      showToast('Errore di rete', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredPatients = patients.filter((p) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -57,9 +143,14 @@ export default function RubricaPage() {
 
   return (
     <Layout headerActions={
-      <div className="patient-count-badge">
-        <i className="ph ph-users" />
-        <span>{patients.length} Pazienti</span>
+      <div className="header-action-group">
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <i className="ph ph-plus" /> Nuovo Paziente
+        </button>
+        <div className="patient-count-badge">
+          <i className="ph ph-users" />
+          <span>{patients.length} Pazienti</span>
+        </div>
       </div>
     }>
       <div className="glass-panel content-card">
@@ -84,7 +175,12 @@ export default function RubricaPage() {
         {filteredPatients.length > 0 ? (
           <div className="patients-grid">
             {filteredPatients.map((patient) => (
-              <div className="patient-card glass-panel" key={patient.id}>
+              <div 
+                className="patient-card glass-panel" 
+                key={patient.id} 
+                onClick={() => navigate(`/profile/${patient.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="patient-card-header">
                   <div className="patient-avatar">
                     {getInitials(patient.first_name, patient.last_name)}
@@ -104,7 +200,14 @@ export default function RubricaPage() {
                       </div>
                     )}
                   </div>
-                  <button className="delete-patient-btn" onClick={() => handleDelete(patient.id)} title="Elimina profilo">
+                  <button 
+                    className="delete-patient-btn" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(patient.id);
+                    }} 
+                    title="Elimina profilo"
+                  >
                     <i className="ph ph-trash" />
                   </button>
                 </div>
@@ -139,6 +242,79 @@ export default function RubricaPage() {
           </div>
         )}
       </div>
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <div className="patient-form-header">
+          <h2>Nuovo Paziente</h2>
+          <p>Crea un nuovo profilo clinico o prenota un appuntamento.</p>
+        </div>
+
+        <form className="patient-form" onSubmit={handleCreateSubmit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Nome *</label>
+              <input type="text" name="first_name" placeholder="es. Mario" required />
+            </div>
+            <div className="form-group">
+              <label>Cognome *</label>
+              <input type="text" name="last_name" placeholder="es. Rossi" required />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" name="e_mail" placeholder="mario@esempio.it" />
+            </div>
+            <div className="form-group">
+              <label>Telefono</label>
+              <input type="tel" name="phone_number" placeholder="+39 ..." />
+            </div>
+            <div className="form-group">
+              <label>Data di Nascita</label>
+              <input type="date" name="date_of_birth" />
+            </div>
+            <div className="form-group full-width">
+              <label>Note Interne</label>
+              <textarea name="notes" placeholder="Note cliniche iniziali..." rows={3}></textarea>
+            </div>
+          </div>
+
+          <div className="booking-toggle-section">
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={withBooking} 
+                onChange={(e) => setWithBooking(e.target.checked)} 
+              />
+              <span className="slider"></span>
+              <span className="toggle-label">Prenota un appuntamento</span>
+            </label>
+          </div>
+
+          {withBooking && (
+            <div className="form-grid booking-subform animate-in">
+              <div className="form-group">
+                <label>Data e Ora *</label>
+                <input type="datetime-local" name="booking_date" required={withBooking} />
+              </div>
+              <div className="form-group">
+                <label>Tipo di Visita</label>
+                <select name="type">
+                  <option value="Visita">Visita</option>
+                  <option value="Controllo">Controllo</option>
+                  <option value="Urgenza">Urgenza</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)} disabled={loading}>Annulla</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? <i className="ph ph-circle-notch animate-spin" /> : <i className="ph ph-user-plus" />}
+              {loading ? 'Creazione...' : 'Crea Paziente'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </Layout>
   );
 }

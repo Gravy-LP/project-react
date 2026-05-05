@@ -1,0 +1,61 @@
+/* Touch & Gesture Optimizations */
+
+/* Tactile Feedback for all buttons */
+.btn:active, 
+.cal-nav-btn:active, 
+.today-btn:active, 
+.day-cell:active,
+.sidebar-item:active,
+.appointment-item:active {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
+/* Specific scaling for mobile without hover */
+@media (hover: none) {
+  .btn:active, 
+  .cal-nav-btn:active, 
+  .today-btn:active, 
+  .day-cell:active {
+    transform: scale(0.94) !important;
+  }
+}
+
+/* Hit Target Improvements */
+.cal-nav-btn, .today-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-actions button {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* Prevent text selection during swipes */
+.calendar-grid-container {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y pinch-zoom; /* Allow vertical scroll but handle horizontal via JS */
+}
+
+/* Visual cues for swipeable areas */
+.calendar-grid-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(90deg, rgba(59,130,246,0.05), transparent 10%, transparent 90%, rgba(59,130,246,0.05));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.calendar-grid-container:active::after {
+  opacity: 1;
+}

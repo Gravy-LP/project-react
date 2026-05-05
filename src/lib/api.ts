@@ -13,6 +13,9 @@ export interface BookingPayload {
   type?: string | null;
   booking_accepted?: boolean | null;
   notes?: string | null;
+  appointment_complete?: boolean | null;
+  is_deleted?: boolean | null;
+  profile_id?: string | null;
 }
 
 export interface BookingResult {
@@ -109,12 +112,29 @@ export async function searchBookings(query: string): Promise<{ bookings?: Bookin
   }
 }
 
+export async function fetchBin(): Promise<{ bookings?: BookingPayload[], error?: string }> {
+  try {
+    const res = await fetch('/api/bookings/bin');
+    const json = await res.json();
+    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
+    return { bookings: json.bookings };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function restoreBooking(id: string): Promise<BookingResult> {
+  return updateBooking(id, { is_deleted: false });
+}
+
 export interface PatientProfile {
   id: string;
   first_name: string;
   last_name: string | null;
   e_mail: string | null;
   phone_number: string | null;
+  date_of_birth: string | null;
+  notes: string | null;
   booking_ids: string[] | null;
   created_at: string;
 }
@@ -136,6 +156,47 @@ export async function deletePatient(id: string): Promise<{ success: boolean; err
     const json = await res.json();
     if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
     return { success: true };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function fetchPatientById(id: string): Promise<{ patient?: PatientProfile, error?: string }> {
+  try {
+    const res = await fetch(`/api/patients?id=${encodeURIComponent(id)}`);
+    const json = await res.json();
+    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
+    return { patient: json.patient };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function updatePatient(id: string, data: Partial<PatientProfile>): Promise<{ success: boolean; patient?: PatientProfile; error?: string }> {
+  try {
+    const res = await fetch(`/api/patients?id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, patient: json.patient };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function createPatient(data: Partial<PatientProfile>): Promise<{ success: boolean; patient?: PatientProfile; error?: string }> {
+  try {
+    const res = await fetch('/api/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, patient: json.patient };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }

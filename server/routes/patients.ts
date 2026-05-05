@@ -40,6 +40,40 @@ router.get('/', async (req, res) => {
   return res.json({ patients: data });
 });
 
+// ── POST: create a new patient profile ──────────────────────────────────────
+router.post('/', async (req, res) => {
+  const { first_name, last_name, e_mail, phone_number, date_of_birth, notes } = req.body;
+
+  if (!first_name || !last_name) {
+    return res.status(400).json({ error: 'Nome e cognome sono obbligatori.' });
+  }
+
+  if (!e_mail && !phone_number) {
+    return res.status(400).json({ error: 'Fornire almeno un contatto (Email o Telefono).' });
+  }
+
+  const { data, error } = await supabase
+    .from('PatientProfile')
+    .insert([{
+      first_name,
+      last_name,
+      e_mail: e_mail || null,
+      phone_number: phone_number || null,
+      date_of_birth: date_of_birth || null,
+      notes: notes || null,
+      booking_ids: []
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[Supabase] PatientProfile creation error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  return res.status(201).json({ success: true, patient: data });
+});
+
 // ── PATCH: update a patient profile by id (?id=<uuid>) ──────────────────────
 router.patch('/', async (req, res) => {
   const patientId = req.query.id as string;
@@ -50,7 +84,7 @@ router.patch('/', async (req, res) => {
   const body = req.body;
 
   // Only allow updating contact/name fields — never id or booking_ids directly
-  const allowed = ['first_name', 'last_name', 'e_mail', 'phone_number'] as const;
+  const allowed = ['first_name', 'last_name', 'e_mail', 'phone_number', 'date_of_birth', 'notes'] as const;
   const updateData: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updateData[key] = body[key] ?? null;
@@ -82,6 +116,13 @@ router.delete('/', async (req, res) => {
     return res.status(400).json({ error: 'Query param ?id= (UUID) is required.' });
   }
 
+  // 1. Unlink any bookings from this profile
+  await supabase
+    .from('Booking')
+    .update({ profile_id: null })
+    .eq('profile_id', patientId);
+
+  // 2. Delete the profile
   const { error } = await supabase
     .from('PatientProfile')
     .delete()

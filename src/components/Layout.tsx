@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import GlobalSearch from './GlobalSearch';
 import NotificationBell from './NotificationBell';
@@ -14,6 +15,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const { logout } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,12 +103,12 @@ export default function Layout({ children, headerActions }: LayoutProps) {
                     <i className="ph ph-user" />
                     <span>Il mio profilo</span>
                   </Link>
-                  <Link to="/fatturazione" className="account-item">
-                    <i className="ph ph-credit-card" />
-                    <span>Fatturazione</span>
+                  <Link to="/bin" className="account-item">
+                    <i className="ph ph-trash" />
+                    <span>Cestino</span>
                   </Link>
                   <div className="account-divider"></div>
-                  <button className="account-item logout">
+                  <button className="account-item logout" onClick={logout}>
                     <i className="ph ph-sign-out" />
                     <span>Esci</span>
                   </button>

@@ -1,23 +1,36 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import CalendarPage from './pages/CalendarPage';
 import IncomingBookingsPage from './pages/IncomingBookingsPage';
 import RubricaPage from './pages/RubricaPage';
+import ProfilePage from './pages/ProfilePage';
+import BinPage from './pages/BinPage';
+import LoginPage from './pages/LoginPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <ConfirmProvider>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/incoming-bookings" element={<IncomingBookingsPage />} />
-            <Route path="/rubrica" element={<RubricaPage />} />
-          </Routes>
-        </ConfirmProvider>
+        <AuthProvider>
+          <ConfirmProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected Routes */}
+              <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+              <Route path="/incoming-bookings" element={<ProtectedRoute><IncomingBookingsPage /></ProtectedRoute>} />
+              <Route path="/rubrica" element={<ProtectedRoute><RubricaPage /></ProtectedRoute>} />
+              <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/bin" element={<ProtectedRoute><BinPage /></ProtectedRoute>} />
+            </Routes>
+          </ConfirmProvider>
+        </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
   );
