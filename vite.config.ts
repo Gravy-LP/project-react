@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    allowedHosts: 'all',
+    allowedHosts: ['devserver-main--transcendent-starship-134524.netlify.app'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
