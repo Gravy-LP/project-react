@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
 import { fetchPatientById, updatePatient, fetchBookings, updateBooking, deleteBooking, createBooking, type PatientProfile, type BookingPayload } from '../lib/api';
 import Modal from '../components/Modal';
@@ -16,6 +17,7 @@ export default function ProfilePage() {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
