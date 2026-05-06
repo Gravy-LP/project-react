@@ -44,8 +44,13 @@
 }
 
 @keyframes float {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(100px, 50px) scale(1.2); }
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+
+  to {
+    transform: translate(100px, 50px) scale(1.2);
+  }
 }
 
 .login-card {
@@ -95,21 +100,20 @@
 }
 
 .input-with-icon {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
 .input-with-icon i {
-  position: absolute;
-  left: 16px;
   color: var(--color-text-muted);
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  flex-shrink: 0;
 }
 
 .input-with-icon input {
-  width: 100%;
-  padding: 14px 16px 14px 48px;
+  flex: 1;
+  padding: 14px 18px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -160,6 +164,13 @@
 }
 
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
