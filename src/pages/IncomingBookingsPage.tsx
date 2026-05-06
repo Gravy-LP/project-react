@@ -4,9 +4,11 @@ import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { useLongPress } from '../hooks/useLongPress';
 import { supabase } from '../lib/supabase';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
+import '../styles/touch-menu.css';
 
 interface Booking {
   booking_id_db: string;
@@ -30,6 +32,7 @@ export default function IncomingBookingsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const highlightId = searchParams.get('highlight');
+  const [activeMenuBooking, setActiveMenuBooking] = useState<{id: string, x: number, y: number} | null>(null);
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -178,65 +181,81 @@ export default function IncomingBookingsPage() {
     }
   };
 
-  const renderBookingRow = (booking: Booking, showFullActions: boolean = false) => (
-    <tr id={`booking-${booking.booking_id_db}`} key={booking.booking_id_db}>
-      <td>
-        <div className="user-identity">
-          <div className="user-initials" aria-hidden="true">
-            {getInitials(`${booking.first_name} ${booking.last_name || ''}`)}
-          </div>
-          <div>
-            <div 
-              className="user-name" 
-              style={booking.profile_id ? { cursor: 'pointer', color: 'var(--color-accent)', textDecoration: 'underline' } : {}}
-              onClick={() => booking.profile_id && navigate(`/profile/${booking.profile_id}`)}
-            >
-              {booking.first_name} {booking.last_name}
+  const BookingRow = ({ booking, showFullActions }: { booking: Booking, showFullActions: boolean }) => {
+    const longPressProps = useLongPress({
+      onLongPress: (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        setActiveMenuBooking({ id: booking.booking_id_db, x: clientX, y: clientY });
+        if (window.navigator.vibrate) window.navigator.vibrate(20);
+      }
+    });
+
+    return (
+      <tr 
+        id={`booking-${booking.booking_id_db}`} 
+        key={booking.booking_id_db}
+        {...longPressProps}
+        className={activeMenuBooking?.id === booking.booking_id_db ? 'row-active' : ''}
+      >
+        <td>
+          <div className="user-identity">
+            <div className="user-initials" aria-hidden="true">
+              {getInitials(`${booking.first_name} ${booking.last_name || ''}`)}
             </div>
-            <div className="user-id">#{booking.booking_id_db.slice(0, 8)}</div>
-          </div>
-        </div>
-      </td>
-      {showFullActions && (
-        <td>
-          <div className="contact-info">
-            <div className="email">{booking.e_mail}</div>
-            <div className="phone">{booking.phone_number}</div>
+            <div>
+              <div 
+                className="user-name" 
+                style={booking.profile_id ? { cursor: 'pointer', color: 'var(--color-accent)', textDecoration: 'underline' } : {}}
+                onClick={() => booking.profile_id && navigate(`/profile/${booking.profile_id}`)}
+              >
+                {booking.first_name} {booking.last_name}
+              </div>
+              <div className="user-id">#{booking.booking_id_db.slice(0, 8)}</div>
+            </div>
           </div>
         </td>
-      )}
-      <td>
-        <span className="visit-date">{formatDate(booking.booking_date)}</span>
-      </td>
-      {showFullActions && (
+        {showFullActions && (
+          <td>
+            <div className="contact-info">
+              <div className="email">{booking.e_mail}</div>
+              <div className="phone">{booking.phone_number}</div>
+            </div>
+          </td>
+        )}
         <td>
-          <span className="booking-type">{booking.type || 'N/A'}</span>
+          <span className="visit-date">{formatDate(booking.booking_date)}</span>
         </td>
-      )}
-      <td>
-        <span className={`status ${booking.booking_accepted === null ? 'pending' : booking.booking_accepted ? 'accepted' : 'rejected'}`}>
-          {booking.booking_accepted === null ? 'In Attesa' : booking.booking_accepted ? 'Accettata' : 'Rifiutata'}
-        </span>
-      </td>
-      <td>
-        <div className="table-actions">
-          {showFullActions && (
-            <>
-              <button className="btn btn-success btn-icon" title="Accetta" onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
-                <i className="ph ph-check" />
-              </button>
-              <button className="btn btn-danger btn-icon" title="Rifiuta" onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
-                <i className="ph ph-x" />
-              </button>
-            </>
-          )}
-          <button className="btn btn-ghost btn-icon text-danger" title="Elimina" onClick={() => handleDelete(booking.booking_id_db)}>
-            <i className="ph ph-trash" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
+        {showFullActions && (
+          <td>
+            <span className="booking-type">{booking.type || 'N/A'}</span>
+          </td>
+        )}
+        <td>
+          <span className={`status ${booking.booking_accepted === null ? 'pending' : booking.booking_accepted ? 'accepted' : 'rejected'}`}>
+            {booking.booking_accepted === null ? 'In Attesa' : booking.booking_accepted ? 'Accettata' : 'Rifiutata'}
+          </span>
+        </td>
+        <td className="hide-mobile">
+          <div className="table-actions">
+            {showFullActions && (
+              <>
+                <button className="btn btn-success btn-icon" title="Accetta" onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
+                  <i className="ph ph-check" />
+                </button>
+                <button className="btn btn-danger btn-icon" title="Rifiuta" onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
+                  <i className="ph ph-x" />
+                </button>
+              </>
+            )}
+            <button className="btn btn-ghost btn-icon text-danger" title="Elimina" onClick={() => handleDelete(booking.booking_id_db)}>
+              <i className="ph ph-trash" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <Layout headerActions={
@@ -275,7 +294,7 @@ export default function IncomingBookingsPage() {
             </thead>
             <tbody>
               {pendingBookings.length > 0 ? (
-                pendingBookings.map((b) => renderBookingRow(b, true))
+                pendingBookings.map((b) => <BookingRow booking={b} showFullActions={true} key={b.booking_id_db} />)
               ) : (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>
@@ -369,6 +388,32 @@ export default function IncomingBookingsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Floating Touch Menu */}
+      {activeMenuBooking && (
+        <div className="touch-menu-overlay" onClick={() => setActiveMenuBooking(null)}>
+          <div 
+            className="touch-menu glass-panel animate-scale"
+            style={{ 
+              top: Math.min(activeMenuBooking.y, window.innerHeight - 200), 
+              left: Math.min(activeMenuBooking.x, window.innerWidth - 180) 
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="touch-menu-header">Azioni rapida</div>
+            <button className="touch-menu-item" onClick={() => { handleUpdateStatus(activeMenuBooking.id, true); setActiveMenuBooking(null); }}>
+              <i className="ph ph-check-circle" /> Accetta
+            </button>
+            <button className="touch-menu-item" onClick={() => { handleUpdateStatus(activeMenuBooking.id, false); setActiveMenuBooking(null); }}>
+              <i className="ph ph-x-circle" /> Rifiuta
+            </button>
+            <div className="touch-menu-divider"></div>
+            <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuBooking.id); setActiveMenuBooking(null); }}>
+              <i className="ph ph-trash" /> Elimina
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

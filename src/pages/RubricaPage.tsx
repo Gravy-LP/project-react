@@ -6,8 +6,10 @@ import { useConfirm } from '../context/ConfirmContext';
 import { fetchPatients, deletePatient, createPatient, createBooking, type PatientProfile } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import Modal from '../components/Modal';
+import { useLongPress } from '../hooks/useLongPress';
 import '../styles/rubrica.css';
 import '../styles/modal.css';
+import '../styles/touch-menu.css';
 
 export default function RubricaPage() {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -18,6 +20,7 @@ export default function RubricaPage() {
   const [showModal, setShowModal] = useState(false);
   const [withBooking, setWithBooking] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeMenuPatient, setActiveMenuPatient] = useState<{id: string, x: number, y: number} | null>(null);
 
   const loadPatients = useCallback(async () => {
     const { patients: data, error } = await fetchPatients();
@@ -174,65 +177,77 @@ export default function RubricaPage() {
 
         {filteredPatients.length > 0 ? (
           <div className="patients-grid">
-            {filteredPatients.map((patient) => (
-              <div 
-                className="patient-card glass-panel" 
-                key={patient.id} 
-                onClick={() => navigate(`/profile/${patient.id}`)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="patient-card-header">
-                  <div className="patient-avatar">
-                    {getInitials(patient.first_name, patient.last_name)}
-                  </div>
-                  <div className="patient-card-info">
-                    <div className="patient-card-name">
-                      {patient.first_name} {patient.last_name || ''}
+            {filteredPatients.map((patient) => {
+              const longPressProps = useLongPress({
+                onLongPress: (e) => {
+                  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                  setActiveMenuPatient({ id: patient.id, x: clientX, y: clientY });
+                  if (window.navigator.vibrate) window.navigator.vibrate(20);
+                },
+                onClick: () => navigate(`/profile/${patient.id}`)
+              });
+
+              return (
+                <div 
+                  className={`patient-card glass-panel ${activeMenuPatient?.id === patient.id ? 'row-active' : ''}`} 
+                  key={patient.id} 
+                  {...longPressProps}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="patient-card-header">
+                    <div className="patient-avatar">
+                      {getInitials(patient.first_name, patient.last_name)}
                     </div>
-                    <div className="patient-card-date">
-                      <i className="ph ph-calendar-blank" />
-                      Aggiunto il {formatDate(patient.created_at)}
-                    </div>
-                    {patient.booking_ids && patient.booking_ids.length > 0 && (
-                      <div className="patient-booking-count">
-                        <i className="ph ph-ticket" />
-                        {patient.booking_ids.length} prenotazion{patient.booking_ids.length === 1 ? 'e' : 'i'}
+                    <div className="patient-card-info">
+                      <div className="patient-card-name">
+                        {patient.first_name} {patient.last_name || ''}
                       </div>
+                      <div className="patient-card-date">
+                        <i className="ph ph-calendar-blank" />
+                        Aggiunto il {formatDate(patient.created_at)}
+                      </div>
+                      {patient.booking_ids && patient.booking_ids.length > 0 && (
+                        <div className="patient-booking-count">
+                          <i className="ph ph-ticket" />
+                          {patient.booking_ids.length} prenotazion{patient.booking_ids.length === 1 ? 'e' : 'i'}
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      className="delete-patient-btn hide-mobile" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(patient.id);
+                      }} 
+                      title="Elimina profilo"
+                    >
+                      <i className="ph ph-trash" />
+                    </button>
+                  </div>
+                  <div className="patient-card-contacts">
+                    {patient.e_mail && (
+                      <a href={`mailto:${patient.e_mail}`} className="contact-chip email-chip">
+                        <i className="ph ph-envelope-simple" />
+                        <span>{patient.e_mail}</span>
+                      </a>
+                    )}
+                    {patient.phone_number && (
+                      <a href={`tel:${patient.phone_number}`} className="contact-chip phone-chip">
+                        <i className="ph ph-phone" />
+                        <span>{patient.phone_number}</span>
+                      </a>
+                    )}
+                    {!patient.e_mail && !patient.phone_number && (
+                      <span className="contact-chip empty-chip">
+                        <i className="ph ph-warning" />
+                        <span>Nessun contatto</span>
+                      </span>
                     )}
                   </div>
-                  <button 
-                    className="delete-patient-btn" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(patient.id);
-                    }} 
-                    title="Elimina profilo"
-                  >
-                    <i className="ph ph-trash" />
-                  </button>
                 </div>
-                <div className="patient-card-contacts">
-                  {patient.e_mail && (
-                    <a href={`mailto:${patient.e_mail}`} className="contact-chip email-chip">
-                      <i className="ph ph-envelope-simple" />
-                      <span>{patient.e_mail}</span>
-                    </a>
-                  )}
-                  {patient.phone_number && (
-                    <a href={`tel:${patient.phone_number}`} className="contact-chip phone-chip">
-                      <i className="ph ph-phone" />
-                      <span>{patient.phone_number}</span>
-                    </a>
-                  )}
-                  {!patient.e_mail && !patient.phone_number && (
-                    <span className="contact-chip empty-chip">
-                      <i className="ph ph-warning" />
-                      <span>Nessun contatto</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="empty-state-container">
@@ -315,6 +330,29 @@ export default function RubricaPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Floating Touch Menu */}
+      {activeMenuPatient && (
+        <div className="touch-menu-overlay" onClick={() => setActiveMenuPatient(null)}>
+          <div 
+            className="touch-menu glass-panel animate-scale"
+            style={{ 
+              top: Math.min(activeMenuPatient.y, window.innerHeight - 150), 
+              left: Math.min(activeMenuPatient.x, window.innerWidth - 180) 
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="touch-menu-header">Opzioni Paziente</div>
+            <button className="touch-menu-item" onClick={() => { navigate(`/profile/${activeMenuPatient.id}`); setActiveMenuPatient(null); }}>
+              <i className="ph ph-user" /> Vedi Profilo
+            </button>
+            <div className="touch-menu-divider"></div>
+            <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuPatient.id); setActiveMenuPatient(null); }}>
+              <i className="ph ph-trash" /> Elimina Profilo
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
