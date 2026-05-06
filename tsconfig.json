@@ -17,7 +17,9 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": ["vite/client"]
   },
-  "include": ["src", "server", "src/main.tsx"]
+  "include": ["src", "src/main.tsx"],
+  "exclude": ["server"]
 }
