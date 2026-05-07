@@ -144,7 +144,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     }
   };
 
-  const getInitials = (first: string, last: string | null) =>
+  const getInitials = (first: string, last: string | null | undefined) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   return (

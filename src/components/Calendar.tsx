@@ -397,7 +397,7 @@ export default function Calendar() {
                   <label>Data Appuntamento *</label>
                   {renderMiniCalendar(editDate || selApt.date, (ds) => {
                     setEditDate(ds);
-                    updateAvailableSlots(ds, 'edit', selApt.booking_id_db);
+                    updateAvailableSlots(ds, 'edit', selApt.booking_id_db || undefined);
                   })}
                   <input type="hidden" name="eDt" value={editDate || selApt.date} required />
                 </div>

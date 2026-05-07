@@ -187,8 +187,8 @@
 
 .slider-sm:before {
   position: absolute;
-  content: " \;
- height: 12px;
+  content: "";
+  height: 12px;
  width: 12px;
  left: 2px;
  bottom: 2px;
