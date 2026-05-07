@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import GlassCard from '../components/GlassCard';
 import BookingModal from '../components/BookingModal';
 import { supabase } from '../lib/supabase';
 import { generateAllSlots } from '../lib/booking-utils';
+import { useTranslation } from '../context/LanguageContext';
 import '../styles/dashboard.css';
-import '../styles/timeline.css'; // New styles for the timeline
+import '../styles/timeline.css';
 
 interface Booking {
   booking_id_db: string;
@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [timeline, setTimeline] = useState<{ time: string, booking?: Booking }[]>([]);
   const [allSlotsCount, setAllSlotsCount] = useState(0);
   const [searchParams] = useSearchParams();
-  const highlightId = searchParams.get('highlight');
+  const { language, t } = useTranslation();
   
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: string, time: string } | null>(null);
@@ -37,7 +37,6 @@ export default function DashboardPage() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tsTomorrow = tomorrow.toISOString().split('T')[0];
 
-    // Fetch today's
     const { data: dataToday } = await supabase
       .from('Booking')
       .select('*')
@@ -45,7 +44,6 @@ export default function DashboardPage() {
       .gte('booking_date', `${ds}T00:00:00Z`)
       .lte('booking_date', `${ds}T23:59:59Z`);
 
-    // Fetch tomorrow's
     const { data: dataTomorrow } = await supabase
       .from('Booking')
       .select('*')
@@ -94,19 +92,31 @@ export default function DashboardPage() {
   const getInitials = (first: string, last: string | null) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
+  const getLocaleTag = (lang: string) => {
+    switch(lang) {
+      case 'IT': return 'it-IT';
+      case 'EN': return 'en-US';
+      case 'ES': return 'es-ES';
+      case 'FR': return 'fr-FR';
+      case 'ZH': return 'zh-CN';
+      default: return 'it-IT';
+    }
+  };
+
   return (
     <Layout>
       <div className="dashboard-content animate-in">
         
-        {/* Top Section: Today's Timeline and Mock Box */}
         <div className="dashboard-top-grid">
           <div className="dashboard-main-card glass-panel">
             <div className="card-header-simple">
               <div className="header-title-group">
                 <i className="ph-fill ph-calendar-check" />
-                <h2>Programma di Oggi</h2>
+                <h2>{t('dashboard.title')}</h2>
               </div>
-              <span className="current-date-pill">{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              <span className="current-date-pill">
+                {new Date().toLocaleDateString(getLocaleTag(language), { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
             </div>
             
             <div className="timeline-container">
@@ -119,7 +129,7 @@ export default function DashboardPage() {
                         <div className="slot-avatar">{getInitials(item.booking.first_name, item.booking.last_name)}</div>
                         <div className="slot-info">
                           <span className="slot-name">{item.booking.first_name} {item.booking.last_name?.[0]}.</span>
-                          <span className="slot-type">{item.booking.type || 'Visita'}</span>
+                          <span className="slot-type">{item.booking.type || t('booking.services.odontoiatria')}</span>
                         </div>
                       </div>
                     ) : (
@@ -127,7 +137,7 @@ export default function DashboardPage() {
                         className="slot-book-btn" 
                         onClick={() => openBookingModal(item.time)}
                       >
-                        <i className="ph ph-plus" /> Prenota
+                        <i className="ph ph-plus" /> {t('dashboard.book')}
                       </button>
                     )}
                   </div>
@@ -140,31 +150,31 @@ export default function DashboardPage() {
             <div className="card-header-simple">
               <div className="header-title-group">
                 <i className="ph-fill ph-chart-line-up" />
-                <h2>Statistiche Rapide</h2>
+                <h2>{t('dashboard.stats')}</h2>
               </div>
             </div>
             <div className="mock-content">
               <div className="stats-section">
                 <div className="stats-group">
-                  <h3>Oggi</h3>
+                  <h3>{t('dashboard.today')}</h3>
                   <div className="stat-row">
-                    <span className="stat-label">Prenotati</span>
+                    <span className="stat-label">{t('dashboard.booked')}</span>
                     <span className="stat-value">{todayBookings.length}</span>
                   </div>
                   <div className="stat-row">
-                    <span className="stat-label">Disponibili</span>
+                    <span className="stat-label">{t('dashboard.available')}</span>
                     <span className="stat-value">{Math.max(0, allSlotsCount - todayBookings.length)}</span>
                   </div>
                 </div>
                 
                 <div className="stats-group divider-top">
-                  <h3>Domani</h3>
+                  <h3>{t('dashboard.tomorrow')}</h3>
                   <div className="stat-row">
-                    <span className="stat-label">Prenotati</span>
+                    <span className="stat-label">{t('dashboard.booked')}</span>
                     <span className="stat-value">{tomorrowBookings.length}</span>
                   </div>
                   <div className="stat-row">
-                    <span className="stat-label">Disponibili</span>
+                    <span className="stat-label">{t('dashboard.available')}</span>
                     <span className="stat-value">{Math.max(0, allSlotsCount - tomorrowBookings.length)}</span>
                   </div>
                 </div>
@@ -172,29 +182,28 @@ export default function DashboardPage() {
               
               <div className="stats-footer">
                 <Link to="/calendar" className="view-more-btn">
-                  Visualizza Calendario Completo <i className="ph ph-arrow-right" />
+                  {t('dashboard.view_calendar')} <i className="ph ph-arrow-right" />
                 </Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Section: Long Rectangle */}
         <div className="dashboard-bottom-card glass-panel">
           <div className="card-header-simple">
             <div className="header-title-group">
               <i className="ph-fill ph-activity" />
-              <h2>Attività Recente e Note</h2>
+              <h2>{t('dashboard.recent_activity')}</h2>
             </div>
           </div>
           <div className="activity-placeholder">
             <div className="activity-item">
               <i className="ph ph-info" />
-              <p>Il sistema di prenotazione è ora sincronizzato con il nuovo database in tempo reale.</p>
+              <p>{t('dashboard.sync_note')}</p>
             </div>
             <div className="activity-item">
               <i className="ph ph-clock-counter-clockwise" />
-              <p>Ultimo backup eseguito correttamente alle 04:00 di oggi.</p>
+              <p>{t('dashboard.backup_note')}</p>
             </div>
           </div>
         </div>

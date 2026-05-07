@@ -9,6 +9,7 @@ import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../l
 import { getAvailableSlots } from '../lib/booking-utils';
 import { formatPhoneNumber } from '../lib/formatters';
 import BookingModal from './BookingModal';
+import BookingFields from './BookingFields';
 import '../styles/calendar.css';
 import '../styles/modal.css';
 
@@ -68,6 +69,18 @@ export default function Calendar() {
   const [showNew, setShowNew] = useState(false);
   const [showDay, setShowDay] = useState(false);
   const [showDet, setShowDet] = useState(false);
+  
+  // Standardized edit state
+  const [eDate, setEDate] = useState('');
+  const [eTime, setETime] = useState('');
+  const [eType, setEType] = useState('');
+  const [eStatus, setEStatus] = useState('null');
+  const [eComplete, setEComplete] = useState(false);
+  const [eNotes, setENotes] = useState('');
+  const [eFn, setEFn] = useState('');
+  const [eLn, setELn] = useState('');
+  const [eEm, setEEm] = useState('');
+  const [ePh, setEPh] = useState('');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -128,9 +141,17 @@ export default function Calendar() {
 
   useEffect(() => {
     if (editing && selApt) {
-      setEditDate(selApt.date);
+      setEDate(selApt.date);
+      setETime(selApt.time);
+      setEType(selApt.type || '');
+      setEStatus(String(selApt.booking_accepted));
+      setEComplete(selApt.appointment_complete);
+      setENotes(selApt.notes || '');
+      setEFn(selApt.first_name);
+      setELn(selApt.last_name || '');
+      setEEm(selApt.e_mail || '');
+      setEPh(selApt.phone_number || '');
       setIsCalMinimized(true);
-      updateAvailableSlots(selApt.date, 'edit', selApt.booking_id_db || undefined);
     }
   }, [editing, selApt]);
 
@@ -237,27 +258,18 @@ export default function Calendar() {
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selApt?.booking_id_db) return;
-    const f = e.currentTarget;
-    const gv = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value?.trim() || '';
-    const fn = gv('eFn'), ln = gv('eLn') || null, em = gv('eEm') || null, ph = gv('ePh') || null;
-    const d = gv('eDt'), ti = gv('eTm');
-    const tp = (f.elements.namedItem('eTp') as HTMLSelectElement)?.value || null;
-    const nt = (f.elements.namedItem('eNt') as HTMLTextAreaElement)?.value?.trim() || null;
-    const av = (f.elements.namedItem('eAc') as HTMLSelectElement)?.value;
-    const ba = av === 'true' ? true : av === 'false' ? false : null;
-    const ac = (f.elements.namedItem('eCo') as HTMLInputElement)?.checked;
-    if (!fn || !d || !ti) return;
+    if (!eFn || !eDate || !eTime) return;
     try {
       const res = await updateBooking(selApt.booking_id_db, { 
-        first_name: fn, 
-        last_name: ln, 
-        e_mail: em, 
-        phone_number: ph, 
-        booking_date: `${d}T${ti}:00`, 
-        type: tp, 
-        booking_accepted: ba, 
-        appointment_complete: ac, 
-        notes: nt 
+        first_name: eFn, 
+        last_name: eLn || null, 
+        e_mail: eEm || null, 
+        phone_number: ePh || null, 
+        booking_date: `${eDate}T${eTime}:00`, 
+        type: eType || null, 
+        booking_accepted: eStatus === 'true' ? true : eStatus === 'false' ? false : null, 
+        appointment_complete: eComplete, 
+        notes: eNotes 
       });
       if (!res.success) { showToast(res.error ?? 'Errore', 'error'); return; }
       showToast('Aggiornato!', 'success'); setShowDet(false); setEditing(false); fetchApts();
@@ -389,52 +401,27 @@ export default function Calendar() {
             <div className="appt-form-header"><div className="appt-form-icon"><i className="ph ph-pencil-simple" /></div><div><h2>Modifica</h2><p>Aggiorna i dati di <strong>{selApt.patient}</strong>.</p></div></div>
             <form onSubmit={handleEditSubmit}>
               <div className="appt-form-grid">
-                <div className="appt-form-group"><label>Nome *</label><input name="eFn" defaultValue={selApt.first_name} required /></div>
-                <div className="appt-form-group"><label>Cognome</label><input name="eLn" defaultValue={selApt.last_name} /></div>
-                <div className="appt-form-group"><label>Email</label><input name="eEm" type="email" defaultValue={selApt.e_mail} /></div>
-                <div className="appt-form-group"><label>Telefono</label><input name="ePh" type="tel" defaultValue={selApt.phone_number} /></div>
-                <div className="appt-form-group span-2">
-                  <label>Data Appuntamento *</label>
-                  {renderMiniCalendar(editDate || selApt.date, (ds) => {
-                    setEditDate(ds);
-                    updateAvailableSlots(ds, 'edit', selApt.booking_id_db || undefined);
-                  })}
-                  <input type="hidden" name="eDt" value={editDate || selApt.date} required />
-                </div>
-                <div className="appt-form-group span-2">
-                  <label>Orario Disponibile *</label>
-                  {isLoadingSlots ? (
-                    <div className="slot-hint">Caricamento...</div>
-                  ) : (
-                    <div className="slot-grid-compact">
-                      {/* Current time option if not in slots */}
-                      {!availableSlots.includes(selApt.time) && !editTime && (
-                        <button type="button" className="slot-chip active">{selApt.time}</button>
-                      )}
-                      {availableSlots.map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          className={`slot-chip ${(editTime || selApt.time) === s ? 'active' : ''}`}
-                          onClick={() => setEditTime(s)}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <input type="hidden" name="eTm" value={editTime || selApt.time} required />
-                </div>
-                <div className="appt-form-group span-2"><label>Tipo</label><select name="eTp" defaultValue={selApt.type}>{serviceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-                <div className="appt-form-group span-2"><label>Stato</label><select name="eAc" defaultValue={String(selApt.booking_accepted)}><option value="null">In attesa</option><option value="true">Accettato</option><option value="false">Rifiutato</option></select></div>
+                <div className="appt-form-group"><label>Nome *</label><input value={eFn} onChange={e => setEFn(e.target.value)} required /></div>
+                <div className="appt-form-group"><label>Cognome</label><input value={eLn} onChange={e => setELn(e.target.value)} /></div>
+                <div className="appt-form-group"><label>Email</label><input type="email" value={eEm} onChange={e => setEEm(e.target.value)} /></div>
+                <div className="appt-form-group"><label>Telefono</label><input type="tel" value={ePh} onChange={e => setEPh(e.target.value)} /></div>
+                
+                <BookingFields 
+                  date={eDate} setDate={setEDate}
+                  time={eTime} setTime={setETime}
+                  type={eType} setType={setEType}
+                  notes={eNotes} setNotes={setENotes}
+                  ignoreBookingId={selApt.booking_id_db || undefined}
+                />
+
+                <div className="appt-form-group span-2"><label>Stato</label><select value={eStatus} onChange={e => setEStatus(e.target.value)}><option value="null">In attesa</option><option value="true">Accettato</option><option value="false">Rifiutato</option></select></div>
                 <div className="appt-form-group span-2">
                   <label className="toggle-switch">
-                    <input type="checkbox" name="eCo" defaultChecked={selApt.appointment_complete} />
+                    <input type="checkbox" checked={eComplete} onChange={e => setEComplete(e.target.checked)} />
                     <span className="slider"></span>
                     <span className="toggle-label">Visita Completata</span>
                   </label>
                 </div>
-                <div className="appt-form-group span-2"><label>Note</label><textarea name="eNt" rows={3} defaultValue={selApt.notes} /></div>
               </div>
               <div className="appt-form-actions">
                 <button type="button" className="btn btn-ghost text-danger" onClick={() => handleDel(selApt)}><i className="ph ph-trash" /> Elimina</button>

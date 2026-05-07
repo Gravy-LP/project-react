@@ -8,8 +8,11 @@ interface SidebarProps {
   setIsCollapsed: (val: boolean) => void;
 }
 
+import { useTranslation } from '../context/LanguageContext';
+
 export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }: SidebarProps) {
   const [isHoverLocked, setIsHoverLocked] = useState(false);
+  const { t } = useTranslation();
 
   const handleCollapse = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -39,26 +42,26 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
         <nav className="nav-links">
           <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <i className="ph ph-squares-four" />
-            <span className="sidebar-label">Dashboard</span>
+            <span className="sidebar-label">{t('sidebar.dashboard')}</span>
           </NavLink>
           <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <i className="ph ph-calendar" />
-            <span className="sidebar-label">Calendario</span>
+            <span className="sidebar-label">{t('sidebar.calendar')}</span>
           </NavLink>
           <NavLink to="/incoming-bookings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <i className="ph ph-calendar-plus" />
-            <span className="sidebar-label">Prenotazioni</span>
+            <span className="sidebar-label">{t('sidebar.bookings')}</span>
           </NavLink>
           <NavLink to="/rubrica" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <i className="ph ph-address-book" />
-            <span className="sidebar-label">Rubrica</span>
+            <span className="sidebar-label">{t('sidebar.contacts')}</span>
           </NavLink>
         </nav>
 
         <div className="sidebar-footer">
           <button className="nav-item collapse-btn" onClick={handleCollapse}>
             <i className={isCollapsed ? "ph ph-caret-right" : "ph ph-caret-left"} />
-            <span className="sidebar-label">{isCollapsed ? 'Espandi' : 'Comprimi'}</span>
+            <span className="sidebar-label">{isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}</span>
           </button>
         </div>
       </aside>

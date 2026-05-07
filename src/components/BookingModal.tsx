@@ -27,12 +27,14 @@ const serviceOptions = [
   { value: 'altro', label: 'Altro' },
 ];
 
+import BookingFields from './BookingFields';
+
 export default function BookingModal({ isOpen, onClose, initialDate, initialTime, onSuccess }: BookingModalProps) {
   const { showToast } = useToast();
   const [date, setDate] = useState(initialDate || '');
   const [time, setTime] = useState(initialTime || '');
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [type, setType] = useState('');
+  const [notes, setNotes] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -40,8 +42,6 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     lastName: '',
     email: '',
     phone: '',
-    type: '',
-    notes: ''
   });
 
   // Search State
@@ -55,27 +55,19 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
       const d = initialDate || new Date().toISOString().split('T')[0];
       setDate(d);
       setTime(initialTime || '');
-      updateSlots(d);
+      setType('');
+      setNotes('');
       // Reset form on open
       setFormData({
         firstName: '',
         lastName: '',
         email: '',
         phone: '',
-        type: '',
-        notes: ''
       });
       setSearchQuery('');
       setSearchResults([]);
     }
   }, [isOpen, initialDate, initialTime]);
-
-  const updateSlots = async (selectedDate: string) => {
-    setIsLoadingSlots(true);
-    const slots = await getAvailableSlots(selectedDate);
-    setAvailableSlots(slots);
-    setIsLoadingSlots(false);
-  };
 
   const handleSearch = async (q: string) => {
     if (!q.trim()) {
@@ -120,8 +112,8 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
       e_mail: formData.email || null,
       phone_number: formData.phone || null,
       booking_date: `${date}T${time}:00`,
-      type: formData.type || null,
-      notes: formData.notes || null,
+      type: type || null,
+      notes: notes || null,
       booking_accepted: true
     };
 
@@ -229,50 +221,12 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
             />
           </div>
 
-          <div className="appt-form-group span-2">
-            <label>Orario Selezionato: <strong style={{color: 'var(--color-accent)'}}>{time || 'Nessuno'}</strong></label>
-            {isLoadingSlots ? (
-              <div className="slot-hint">Caricamento orari...</div>
-            ) : (
-              <div className="slot-grid-compact">
-                {time && !availableSlots.includes(time) && (
-                  <button type="button" className="slot-chip active">{time}</button>
-                )}
-                {availableSlots.map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`slot-chip ${time === s ? 'active' : ''}`}
-                    onClick={() => setTime(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="appt-form-group span-2">
-            <label>Tipo di Visita</label>
-            <select 
-              name="type"
-              value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-            >
-              {serviceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-
-          <div className="appt-form-group span-2">
-            <label>Note</label>
-            <textarea 
-              name="notes" 
-              rows={3} 
-              placeholder="Aggiungi dettagli extra..." 
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-            />
-          </div>
+          <BookingFields 
+            date={date} setDate={setDate}
+            time={time} setTime={setTime}
+            type={type} setType={setType}
+            notes={notes} setNotes={setNotes}
+          />
         </div>
 
         <div className="appt-form-actions">

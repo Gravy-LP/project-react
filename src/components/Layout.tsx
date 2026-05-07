@@ -12,6 +12,8 @@ interface LayoutProps {
   headerActions?: React.ReactNode;
 }
 
+import { useTranslation } from '../context/LanguageContext';
+
 export default function Layout({ children, headerActions }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -19,12 +21,12 @@ export default function Layout({ children, headerActions }: LayoutProps) {
     return saved === 'true';
   });
   const [activeDropdown, setActiveDropdown] = useState<'search' | 'notifications' | 'account' | null>(null);
-  const [language, setLanguage] = useState('IT');
+  const { language, setLanguage, t } = useTranslation();
   const { isDarkMode, toggleTheme } = useTheme();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isCollapsed));
@@ -145,13 +147,13 @@ export default function Layout({ children, headerActions }: LayoutProps) {
 
               <div className={`account-dropdown glass-panel ${activeDropdown === 'account' ? 'open' : ''}`}>
                 <div className="account-dropdown-header">
-                  <div className="account-name">Dr. Rossi</div>
-                  <div className="account-role">Amministratore</div>
+                  <div className="account-name">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('common.user')}</div>
+                  <div className="account-role">{user?.email || t('common.no_login')}</div>
                 </div>
                 <div className="account-dropdown-body">
                   <div className="account-item no-hover">
                     <i className={isDarkMode ? "ph ph-moon" : "ph ph-sun"} />
-                    <span>Tema {isDarkMode ? 'Scuro' : 'Chiaro'}</span>
+                    <span>{t('common.theme')} {isDarkMode ? t('common.dark') : t('common.light')}</span>
                     <label className="toggle-switch-sm">
                       <input
                         type="checkbox"
@@ -164,15 +166,17 @@ export default function Layout({ children, headerActions }: LayoutProps) {
 
                   <div className="account-item no-hover">
                     <i className="ph ph-translate" />
-                    <span>Lingua</span>
+                    <span>{t('common.language')}</span>
                     <select
                       className="lang-select"
                       value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
+                      onChange={(e) => setLanguage(e.target.value as any)}
                     >
                       <option value="IT">Italiano</option>
                       <option value="EN">English</option>
                       <option value="ES">Español</option>
+                      <option value="FR">Français</option>
+                      <option value="ZH">中文</option>
                     </select>
                   </div>
 
@@ -180,17 +184,17 @@ export default function Layout({ children, headerActions }: LayoutProps) {
 
                   <Link to="/profilo" className="account-item" onClick={() => setActiveDropdown(null)}>
                     <i className="ph ph-user" />
-                    <span>Il mio profilo</span>
+                    <span>{t('common.profile')}</span>
                   </Link>
                   <Link to="/bin" className="account-item" onClick={() => setActiveDropdown(null)}>
                     <i className="ph ph-trash" />
-                    <span>Cestino</span>
+                    <span>{t('common.bin')}</span>
                   </Link>
 
                   <div className="account-divider"></div>
                   <button className="account-item logout" onClick={logout}>
                     <i className="ph ph-sign-out" />
-                    <span>Esci</span>
+                    <span>{t('common.logout')}</span>
                   </button>
                 </div>
               </div>

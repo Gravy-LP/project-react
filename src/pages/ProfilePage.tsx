@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { fetchPatientById, updatePatient, fetchBookings, updateBooking, deleteBooking, createBooking, deletePatient, type PatientProfile, type BookingPayload } from '../lib/api';
 import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
+import BookingFields from '../components/BookingFields';
 import '../styles/profile.css';
 import '../styles/calendar.css';
 import '../styles/modal.css';
@@ -25,6 +26,14 @@ export default function ProfilePage() {
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [curDate, setCurDate] = useState(new Date());
+
+  // Standardized booking state
+  const [bDate, setBDate] = useState('');
+  const [bTime, setBTime] = useState('');
+  const [bType, setBType] = useState('');
+  const [bStatus, setBStatus] = useState('null');
+  const [bComplete, setBComplete] = useState(false);
+  const [bNotes, setBNotes] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -82,6 +91,28 @@ export default function ProfilePage() {
     }
   };
 
+  useEffect(() => {
+    if (showBookingModal && selectedBooking) {
+      setBDate(selectedBooking.booking_date.split('T')[0]);
+      setBTime(selectedBooking.booking_date.split('T')[1].slice(0, 5));
+      setBType(selectedBooking.type || '');
+      setBStatus(String(selectedBooking.booking_accepted));
+      setBComplete(!!selectedBooking.appointment_complete);
+      setBNotes(selectedBooking.notes || '');
+    }
+  }, [showBookingModal, selectedBooking]);
+
+  useEffect(() => {
+    if (showNewBookingModal) {
+      setBDate(new Date().toISOString().split('T')[0]);
+      setBTime('');
+      setBType('');
+      setBStatus('null');
+      setBComplete(false);
+      setBNotes('');
+    }
+  }, [showNewBookingModal]);
+
   const handleSaveNote = async () => {
     if (!id || !patient) return;
     setSaving(true);
@@ -105,15 +136,13 @@ export default function ProfilePage() {
   const handleUpdateBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedBooking?.booking_id_db) return;
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
     
     const updateData = {
-      booking_date: `${data.date}T${data.time}:00`,
-      type: data.type as string,
-      notes: data.notes as string,
-      booking_accepted: data.status === 'true' ? true : data.status === 'false' ? false : null,
-      appointment_complete: data.appointment_complete === 'on'
+      booking_date: `${bDate}T${bTime}:00`,
+      type: bType,
+      notes: bNotes,
+      booking_accepted: bStatus === 'true' ? true : bStatus === 'false' ? false : null,
+      appointment_complete: bComplete
     };
 
     const res = await updateBooking(selectedBooking.booking_id_db, updateData);
@@ -130,18 +159,16 @@ export default function ProfilePage() {
   const handleCreateBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!patient) return;
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
 
     const res = await createBooking({
       first_name: patient.first_name,
       last_name: patient.last_name || '',
       e_mail: patient.e_mail || '',
       phone_number: patient.phone_number || '',
-      booking_date: `${data.date}T${data.time}:00`,
-      type: data.type as string,
-      notes: data.notes as string,
-      booking_accepted: data.status === 'true' ? true : data.status === 'false' ? false : null
+      booking_date: `${bDate}T${bTime}:00`,
+      type: bType,
+      notes: bNotes,
+      booking_accepted: bStatus === 'true' ? true : bStatus === 'false' ? false : null
     });
 
     if (res.success) {
@@ -401,46 +428,39 @@ export default function ProfilePage() {
       <Modal isOpen={showBookingModal} onClose={() => setShowBookingModal(false)}>
         {selectedBooking && (
           <div className="booking-edit-form">
-            <h2>Modifica Prenotazione</h2>
+            <div className="appt-form-header">
+              <div className="appt-form-icon"><i className="ph ph-pencil-simple" /></div>
+              <div>
+                <h2>Modifica Prenotazione</h2>
+                <p>Aggiorna l'appuntamento di <strong>{patient.first_name}</strong>.</p>
+              </div>
+            </div>
             <form onSubmit={handleUpdateBooking}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Data</label>
-                  <input type="date" name="date" defaultValue={selectedBooking.booking_date.split('T')[0]} required />
-                </div>
-                <div className="form-group">
-                  <label>Orario</label>
-                  <input type="time" name="time" defaultValue={selectedBooking.booking_date.split('T')[1].slice(0,5)} required />
-                </div>
-                <div className="form-group full-width">
-                  <label>Tipo di Visita</label>
-                  <select name="type" defaultValue={selectedBooking.type || 'Visita'}>
-                    <option value="Visita">Visita</option>
-                    <option value="Controllo">Controllo</option>
-                    <option value="Urgenza">Urgenza</option>
-                  </select>
-                </div>
-                <div className="form-group full-width">
+              <div className="appt-form-grid">
+                <BookingFields 
+                  date={bDate} setDate={setBDate}
+                  time={bTime} setTime={setBTime}
+                  type={bType} setType={setBType}
+                  notes={bNotes} setNotes={setBNotes}
+                  ignoreBookingId={selectedBooking.booking_id_db}
+                />
+                <div className="appt-form-group span-2">
                   <label>Stato</label>
-                  <select name="status" defaultValue={String(selectedBooking.booking_accepted)}>
+                  <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
                     <option value="null">In attesa</option>
                     <option value="true">Accettato</option>
                     <option value="false">Rifiutato</option>
                   </select>
                 </div>
-                <div className="form-group full-width">
+                <div className="appt-form-group span-2">
                   <label className="toggle-switch">
-                    <input type="checkbox" name="appointment_complete" defaultChecked={selectedBooking.appointment_complete} />
+                    <input type="checkbox" checked={bComplete} onChange={(e) => setBComplete(e.target.checked)} />
                     <span className="slider"></span>
                     <span className="toggle-label">Visita Completata</span>
                   </label>
                 </div>
-                <div className="form-group full-width">
-                  <label>Note</label>
-                  <textarea name="notes" defaultValue={selectedBooking.notes || ''} rows={3} />
-                </div>
               </div>
-              <div className="form-actions">
+              <div className="appt-form-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowBookingModal(false)}>Annulla</button>
                 <button type="submit" className="btn btn-primary">Salva Modifiche</button>
               </div>
@@ -452,39 +472,31 @@ export default function ProfilePage() {
       {/* New Booking Modal */}
       <Modal isOpen={showNewBookingModal} onClose={() => setShowNewBookingModal(false)}>
         <div className="booking-edit-form">
-          <h2>Nuova Prenotazione</h2>
+          <div className="appt-form-header">
+            <div className="appt-form-icon"><i className="ph ph-calendar-plus" /></div>
+            <div>
+              <h2>Nuova Prenotazione</h2>
+              <p>Registra un nuovo appuntamento per <strong>{patient.first_name}</strong>.</p>
+            </div>
+          </div>
           <form onSubmit={handleCreateBooking}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Data</label>
-                <input type="date" name="date" required />
-              </div>
-              <div className="form-group">
-                <label>Orario</label>
-                <input type="time" name="time" required />
-              </div>
-              <div className="form-group full-width">
-                <label>Tipo di Visita</label>
-                <select name="type">
-                  <option value="Visita">Visita</option>
-                  <option value="Controllo">Controllo</option>
-                  <option value="Urgenza">Urgenza</option>
-                </select>
-              </div>
-              <div className="form-group full-width">
+            <div className="appt-form-grid">
+              <BookingFields 
+                date={bDate} setDate={setBDate}
+                time={bTime} setTime={setBTime}
+                type={bType} setType={setBType}
+                notes={bNotes} setNotes={setBNotes}
+              />
+              <div className="appt-form-group span-2">
                 <label>Stato Iniziale</label>
-                <select name="status">
+                <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
                   <option value="null">In attesa</option>
                   <option value="true">Accettato</option>
                   <option value="false">Rifiutato</option>
                 </select>
               </div>
-              <div className="form-group full-width">
-                <label>Note</label>
-                <textarea name="notes" rows={3} />
-              </div>
             </div>
-            <div className="form-actions">
+            <div className="appt-form-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setShowNewBookingModal(false)}>Annulla</button>
               <button type="submit" className="btn btn-primary">Crea Prenotazione</button>
             </div>

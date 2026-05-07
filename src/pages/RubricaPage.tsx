@@ -7,6 +7,7 @@ import { fetchPatients, createPatient, createBooking, type PatientProfile } from
 import { supabase } from '../lib/supabase';
 import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
+import BookingFields from '../components/BookingFields';
 import { useLongPress } from '../hooks/useLongPress';
 import '../styles/rubrica.css';
 import '../styles/modal.css';
@@ -100,6 +101,12 @@ export default function RubricaPage() {
   const [loading, setLoading] = useState(false);
   const [activeMenuPatient, setActiveMenuPatient] = useState<{id: string, x: number, y: number} | null>(null);
 
+  // Booking state for subform
+  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingType, setBookingType] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
+
   const loadPatients = useCallback(async () => {
     const { patients: data, error } = await fetchPatients();
     if (error) {
@@ -159,10 +166,10 @@ export default function RubricaPage() {
           last_name: data.last_name as string,
           e_mail: data.e_mail as string,
           phone_number: data.phone_number as string,
-          booking_date: data.booking_date as string,
-          type: data.type as string,
+          booking_date: `${bookingDate}T${bookingTime}:00`,
+          type: bookingType,
           booking_accepted: true,
-          notes: data.notes as string
+          notes: bookingNotes
         });
 
         if (!res.success) {
@@ -308,19 +315,13 @@ export default function RubricaPage() {
           </div>
 
           {withBooking && (
-            <div className="form-grid booking-subform animate-in">
-              <div className="form-group">
-                <label>Data e Ora *</label>
-                <input type="datetime-local" name="booking_date" required={withBooking} />
-              </div>
-              <div className="form-group">
-                <label>Tipo di Visita</label>
-                <select name="type">
-                  <option value="Visita">Visita</option>
-                  <option value="Controllo">Controllo</option>
-                  <option value="Urgenza">Urgenza</option>
-                </select>
-              </div>
+            <div className="booking-subform animate-in" style={{ marginTop: '20px' }}>
+              <BookingFields 
+                date={bookingDate} setDate={setBookingDate}
+                time={bookingTime} setTime={setBookingTime}
+                type={bookingType} setType={setBookingType}
+                notes={bookingNotes} setNotes={setBookingNotes}
+              />
             </div>
           )}
 

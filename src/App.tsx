@@ -11,11 +11,13 @@ import ProfilePage from './pages/ProfilePage';
 import BinPage from './pages/BinPage';
 import LoginPage from './pages/LoginPage';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 
 export default function App() {
   return (
-    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
-      <ThemeProvider>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <LanguageProvider>
+        <ThemeProvider>
         <ToastProvider>
         <AuthProvider>
           <ConfirmProvider>
@@ -34,7 +36,8 @@ export default function App() {
           </ConfirmProvider>
         </AuthProvider>
       </ToastProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }
