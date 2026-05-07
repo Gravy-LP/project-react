@@ -10,8 +10,7 @@
 }
 
 .global-search-container.active {
-  flex: 0 0 50%;
-  margin: 0 16px;
+  width: 100%;
 }
 
 @media (max-width: 768px) {

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import GlobalSearch from './GlobalSearch';
 import NotificationBell from './NotificationBell';
+import { useTheme } from '../context/ThemeContext';
 import '../styles/account-menu.css';
 
 interface LayoutProps {
@@ -13,19 +14,44 @@ interface LayoutProps {
 
 export default function Layout({ children, headerActions }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    return saved === 'true';
+  });
+  const [activeDropdown, setActiveDropdown] = useState<'search' | 'notifications' | 'account' | null>(null);
+  const [language, setLanguage] = useState('IT');
+  const { isDarkMode, toggleTheme } = useTheme();
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { logout } = useAuth();
 
   useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', String(isCollapsed));
+  }, [isCollapsed]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setIsAccountMenuOpen(false);
+      const target = e.target as Node;
+
+      // Handle Account Menu
+      if (accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+        if (activeDropdown === 'account') setActiveDropdown(null);
+      }
+
+      // Handle Notifications
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        if (activeDropdown === 'notifications') setActiveDropdown(null);
+      }
+
+      // Handle Search
+      if (searchRef.current && !searchRef.current.contains(target)) {
+        if (activeDropdown === 'search') setActiveDropdown(null);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeDropdown]);
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
@@ -50,7 +76,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
     if (isRightSwipe && !isMobileMenuOpen && touchStartX < 50) {
       setIsMobileMenuOpen(true);
     }
-    
+
     // Swipe left to close
     if (isLeftSwipe && isMobileMenuOpen) {
       setIsMobileMenuOpen(false);
@@ -58,8 +84,8 @@ export default function Layout({ children, headerActions }: LayoutProps) {
   };
 
   return (
-    <div 
-      className="dashboard-layout"
+    <div
+      className={`dashboard-layout ${isCollapsed ? 'sidebar-collapsed' : ''}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -69,46 +95,98 @@ export default function Layout({ children, headerActions }: LayoutProps) {
       <div className="bg-shape shape-2"></div>
       <div className="bg-shape shape-3"></div>
 
-      <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+      <Sidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+      />
       <main className="main-content">
         <header className="top-header">
           <div className="header-left">
             <button className="mobile-menu-toggle" id="mobileMenuBtn" onClick={() => setIsMobileMenuOpen(true)}>
               <i className="ph ph-list" />
             </button>
-            {headerActions}
+            <div className="header-brand">
+              <i className="ph-fill ph-calendar-check" />
+              <span>AptBooker</span>
+            </div>
+            <div className="header-actions-container">
+              {headerActions}
+            </div>
           </div>
           <div className="header-right">
-            <GlobalSearch />
-            <NotificationBell />
-            
+            <div
+              ref={searchRef}
+              className={`header-item-wrapper ${activeDropdown === 'search' ? 'active-search' : ''}`}
+            >
+              <GlobalSearch
+                isOpen={activeDropdown === 'search'}
+                setIsOpen={(val) => setActiveDropdown(val ? 'search' : null)}
+              />
+            </div>
+            <div ref={notificationRef} className="header-item-wrapper">
+              <NotificationBell
+                isOpen={activeDropdown === 'notifications'}
+                setIsOpen={(val) => setActiveDropdown(val ? 'notifications' : null)}
+              />
+            </div>
+
             <div className="account-menu-container" ref={accountMenuRef}>
-              <div 
-                className="avatar" 
-                onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-                style={{ cursor: 'pointer' }}
+              <button
+                className={`burger-menu ${activeDropdown === 'account' ? 'open' : ''}`}
+                onClick={() => setActiveDropdown(activeDropdown === 'account' ? null : 'account')}
+                aria-label="Toggle Account Menu"
               >
-                <img src="https://i.pravatar.cc/100?img=33" alt="User Avatar" />
-              </div>
-              
-              <div className={`account-dropdown glass-panel ${isAccountMenuOpen ? 'open' : ''}`}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </button>
+
+              <div className={`account-dropdown glass-panel ${activeDropdown === 'account' ? 'open' : ''}`}>
                 <div className="account-dropdown-header">
                   <div className="account-name">Dr. Rossi</div>
                   <div className="account-role">Amministratore</div>
                 </div>
                 <div className="account-dropdown-body">
-                  <Link to="/impostazioni" className="account-item">
-                    <i className="ph ph-gear" />
-                    <span>Impostazioni</span>
-                  </Link>
-                  <Link to="/profilo" className="account-item">
+                  <div className="account-item no-hover">
+                    <i className={isDarkMode ? "ph ph-moon" : "ph ph-sun"} />
+                    <span>Tema {isDarkMode ? 'Scuro' : 'Chiaro'}</span>
+                    <label className="toggle-switch-sm">
+                      <input
+                        type="checkbox"
+                        checked={isDarkMode}
+                        onChange={toggleTheme}
+                      />
+                      <span className="slider-sm"></span>
+                    </label>
+                  </div>
+
+                  <div className="account-item no-hover">
+                    <i className="ph ph-translate" />
+                    <span>Lingua</span>
+                    <select
+                      className="lang-select"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                    >
+                      <option value="IT">Italiano</option>
+                      <option value="EN">English</option>
+                      <option value="ES">Español</option>
+                    </select>
+                  </div>
+
+                  <div className="account-divider"></div>
+
+                  <Link to="/profilo" className="account-item" onClick={() => setActiveDropdown(null)}>
                     <i className="ph ph-user" />
                     <span>Il mio profilo</span>
                   </Link>
-                  <Link to="/bin" className="account-item">
+                  <Link to="/bin" className="account-item" onClick={() => setActiveDropdown(null)}>
                     <i className="ph ph-trash" />
                     <span>Cestino</span>
                   </Link>
+
                   <div className="account-divider"></div>
                   <button className="account-item logout" onClick={logout}>
                     <i className="ph ph-sign-out" />

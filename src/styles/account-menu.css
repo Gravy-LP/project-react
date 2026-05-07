@@ -106,3 +106,120 @@
 .account-item.logout:hover i {
   color: #f87171;
 }
+
+/* Burger Menu Toggle */
+.burger-menu {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 101;
+}
+
+.burger-menu:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-accent);
+}
+
+.burger-menu span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--color-text-primary);
+  border-radius: 2px;
+  transition: all 0.4s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+  transform-origin: center;
+}
+
+.burger-menu.open {
+  transform: rotate(180deg);
+}
+
+.burger-menu.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.burger-menu.open span:nth-child(2) {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.burger-menu.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Small Toggle Switch */
+.toggle-switch-sm {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  margin-left: auto;
+}
+
+.toggle-switch-sm input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-sm {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .4s;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+}
+
+.slider-sm:before {
+  position: absolute;
+  content: " \;
+ height: 12px;
+ width: 12px;
+ left: 2px;
+ bottom: 2px;
+ background-color: white;
+ transition: .4s;
+ border-radius: 50%;
+}
+
+input:checked + .slider-sm {
+ background-color: var(--color-accent);
+ border-color: var(--color-accent);
+}
+
+input:checked + .slider-sm:before {
+ transform: translateX(14px);
+}
+
+/* Language Select */
+.lang-select {
+ margin-left: auto;
+ background: rgba(255, 255, 255, 0.05);
+ border: 1px solid var(--color-border);
+ border-radius: 4px;
+ color: var(--color-text-primary);
+ font-size: 0.75rem;
+ padding: 2px 6px;
+ cursor: pointer;
+ outline: none;
+}
+
+.account-item.no-hover:hover {
+ background: transparent;
+ cursor: default;
+}

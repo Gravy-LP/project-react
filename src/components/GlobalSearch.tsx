@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { searchBookings, type BookingPayload } from '../lib/api';
 import '../styles/search.css';
 
-export default function GlobalSearch() {
-  const [isActive, setIsActive] = useState(false);
+interface GlobalSearchProps {
+  isOpen: boolean;
+  setIsOpen: (val: boolean) => void;
+}
+
+export default function GlobalSearch({ isOpen, setIsOpen }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<BookingPayload[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<number>();
@@ -23,36 +26,23 @@ export default function GlobalSearch() {
 
   useEffect(() => {
     if (query.trim().length > 0) {
-      setShowDropdown(true);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => performSearch(query.trim()), 500);
     } else {
-      setShowDropdown(false);
       setResults([]);
     }
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, [query, performSearch]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsActive(false);
-        setShowDropdown(false);
-        setQuery('');
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+  const showDropdown = isOpen && query.trim().length > 0;
 
   const getInitials = (first: string, last: string) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   const handleResultClick = (b: BookingPayload) => {
-    setShowDropdown(false);
-    setIsActive(false);
+    setIsOpen(false);
     setQuery('');
-    
+
     // If it's a virtual booking pointing to a profile
     if (b.booking_id_db?.startsWith('p-') && b.profile_id) {
       navigate(`/profile/${b.profile_id}`);
@@ -69,12 +59,12 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div className={`global-search-container ${isActive ? 'active' : ''}`} ref={containerRef}>
-      <div className={`search-input-wrapper ${isActive ? 'active' : ''} ${query ? 'has-text' : ''}`}>
+    <div className={`global-search-container ${isOpen ? 'active' : ''}`} ref={containerRef}>
+      <div className={`search-input-wrapper ${isOpen ? 'active' : ''} ${query ? 'has-text' : ''}`}>
         <i
           className="ph ph-magnifying-glass search-icon"
           onClick={() => {
-            setIsActive(true);
+            setIsOpen(true);
             inputRef.current?.focus();
           }}
         />

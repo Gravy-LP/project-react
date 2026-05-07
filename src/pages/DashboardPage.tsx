@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import GlassCard from '../components/GlassCard';
+import BookingModal from '../components/BookingModal';
 import { supabase } from '../lib/supabase';
+import { generateAllSlots } from '../lib/booking-utils';
 import '../styles/dashboard.css';
+import '../styles/timeline.css'; // New styles for the timeline
 
 interface Booking {
   booking_id_db: string;
@@ -16,71 +19,76 @@ interface Booking {
 }
 
 export default function DashboardPage() {
-  const [upcomingApts, setUpcomingApts] = useState<Booking[]>([]);
-  const [incomingApts, setIncomingApts] = useState<Booking[]>([]);
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [tomorrowBookings, setTomorrowBookings] = useState<Booking[]>([]);
+  const [timeline, setTimeline] = useState<{ time: string, booking?: Booking }[]>([]);
+  const [allSlotsCount, setAllSlotsCount] = useState(0);
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
+  
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ date: string, time: string } | null>(null);
+
+  const fetchDashboardData = async () => {
+    const today = new Date();
+    const ds = today.toISOString().split('T')[0];
+    
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tsTomorrow = tomorrow.toISOString().split('T')[0];
+
+    // Fetch today's
+    const { data: dataToday } = await supabase
+      .from('Booking')
+      .select('*')
+      .eq('is_deleted', false)
+      .gte('booking_date', `${ds}T00:00:00Z`)
+      .lte('booking_date', `${ds}T23:59:59Z`);
+
+    // Fetch tomorrow's
+    const { data: dataTomorrow } = await supabase
+      .from('Booking')
+      .select('*')
+      .eq('is_deleted', false)
+      .gte('booking_date', `${tsTomorrow}T00:00:00Z`)
+      .lte('booking_date', `${tsTomorrow}T23:59:59Z`);
+
+    const tBookings = dataToday || [];
+    const mBookings = dataTomorrow || [];
+    
+    setTodayBookings(tBookings);
+    setTomorrowBookings(mBookings);
+
+    const allSlots = generateAllSlots();
+    setAllSlotsCount(allSlots.length);
+
+    const merged = allSlots.map(slot => {
+      const found = tBookings.find(b => {
+        const bt = new Date(b.booking_date!).toTimeString().slice(0, 5);
+        return bt === slot;
+      });
+      return { time: slot, booking: found };
+    });
+    setTimeline(merged);
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      const now = new Date().toISOString();
+    fetchDashboardData();
 
-      const { data: upcoming } = await supabase
-        .from('Booking')
-        .select('*')
-        .eq('booking_accepted', true)
-        .gte('booking_date', now)
-        .order('booking_date', { ascending: true })
-        .limit(5);
-
-      const { data: incoming } = await supabase
-        .from('Booking')
-        .select('*')
-        .or('booking_accepted.is.null,booking_accepted.eq.false')
-        .order('booking_date', { ascending: true })
-        .limit(5);
-
-      setUpcomingApts(upcoming || []);
-      setIncomingApts(incoming || []);
-    }
-    fetchData();
-
-    // Real-time subscription
     const channel = supabase
-      .channel('booking-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'Booking' },
-        () => fetchData()
-      )
+      .channel('dashboard-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Booking' }, () => fetchDashboardData())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Highlight effect
-  useEffect(() => {
-    if (highlightId) {
-      const el = document.getElementById(`booking-${highlightId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('highlight-pulse');
-        window.history.replaceState({}, document.title, '/');
-        setTimeout(() => el.classList.remove('highlight-pulse'), 2500);
-      }
-    }
-  }, [highlightId, upcomingApts]);
-
-  const formatAptDate = (dateStr: string | null) => {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    return (
-      date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }) +
-      ' ' +
-      date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    );
+  const openBookingModal = (time: string) => {
+    setSelectedSlot({
+      date: new Date().toISOString().split('T')[0],
+      time: time
+    });
+    setIsBookingOpen(true);
   };
 
   const getInitials = (first: string, last: string | null) =>
@@ -88,80 +96,118 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <div className="dashboard-grid full-width">
-        <div className="section-column">
-          <GlassCard title="Prossimi Appuntamenti" icon="ph-calendar-check">
-            <div className="appointments-list">
-              {upcomingApts.length > 0 ? (
-                upcomingApts.map((apt) => (
-                  <div className="appointment-item" id={`booking-${apt.booking_id_db}`} key={apt.booking_id_db}>
-                    <div className="patient-info">
-                      <div className="initials-avatar">
-                        {getInitials(apt.first_name, apt.last_name)}
+      <div className="dashboard-content animate-in">
+        
+        {/* Top Section: Today's Timeline and Mock Box */}
+        <div className="dashboard-top-grid">
+          <div className="dashboard-main-card glass-panel">
+            <div className="card-header-simple">
+              <div className="header-title-group">
+                <i className="ph-fill ph-calendar-check" />
+                <h2>Programma di Oggi</h2>
+              </div>
+              <span className="current-date-pill">{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </div>
+            
+            <div className="timeline-container">
+              <div className="timeline-track">
+                {timeline.map((item, idx) => (
+                  <div key={idx} className={`timeline-slot ${item.booking ? 'occupied' : 'available'}`}>
+                    <div className="slot-time">{item.time}</div>
+                    {item.booking ? (
+                      <div className="slot-content">
+                        <div className="slot-avatar">{getInitials(item.booking.first_name, item.booking.last_name)}</div>
+                        <div className="slot-info">
+                          <span className="slot-name">{item.booking.first_name} {item.booking.last_name?.[0]}.</span>
+                          <span className="slot-type">{item.booking.type || 'Visita'}</span>
+                        </div>
                       </div>
-                      <div>
-                        <Link to={apt.profile_id ? `/profile/${apt.profile_id}` : '#'} className="patient-name-link">
-                          <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
-                        </Link>
-                        <div className="appointment-service">{apt.type || 'Visita'}</div>
-                      </div>
-                    </div>
-                    <div className="appointment-time">
-                      <i className="ph ph-clock" />
-                      {formatAptDate(apt.booking_date)}
-                    </div>
+                    ) : (
+                      <button 
+                        className="slot-book-btn" 
+                        onClick={() => openBookingModal(item.time)}
+                      >
+                        <i className="ph ph-plus" /> Prenota
+                      </button>
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="empty-state">Nessun appuntamento confermato.</div>
-              )}
+                ))}
+              </div>
             </div>
-            <div className="card-footer">
-              <Link to="/calendar" className="view-more-btn">
-                Visualizza Calendario <i className="ph ph-arrow-right" />
-              </Link>
+          </div>
+
+          <div className="dashboard-mock-card glass-panel">
+            <div className="card-header-simple">
+              <div className="header-title-group">
+                <i className="ph-fill ph-chart-line-up" />
+                <h2>Statistiche Rapide</h2>
+              </div>
             </div>
-          </GlassCard>
+            <div className="mock-content">
+              <div className="stats-section">
+                <div className="stats-group">
+                  <h3>Oggi</h3>
+                  <div className="stat-row">
+                    <span className="stat-label">Prenotati</span>
+                    <span className="stat-value">{todayBookings.length}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span className="stat-label">Disponibili</span>
+                    <span className="stat-value">{Math.max(0, allSlotsCount - todayBookings.length)}</span>
+                  </div>
+                </div>
+                
+                <div className="stats-group divider-top">
+                  <h3>Domani</h3>
+                  <div className="stat-row">
+                    <span className="stat-label">Prenotati</span>
+                    <span className="stat-value">{tomorrowBookings.length}</span>
+                  </div>
+                  <div className="stat-row">
+                    <span className="stat-label">Disponibili</span>
+                    <span className="stat-value">{Math.max(0, allSlotsCount - tomorrowBookings.length)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="stats-footer">
+                <Link to="/calendar" className="view-more-btn">
+                  Visualizza Calendario Completo <i className="ph ph-arrow-right" />
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="section-column">
-          <GlassCard title="Nuove Richieste" icon="ph-bell-ringing">
-            <div className="appointments-list">
-              {incomingApts.length > 0 ? (
-                incomingApts.map((apt) => (
-                  <div className="appointment-item" id={`booking-${apt.booking_id_db}`} key={apt.booking_id_db}>
-                    <div className="patient-info">
-                      <div className="initials-avatar incoming">
-                        {getInitials(apt.first_name, apt.last_name)}
-                      </div>
-                      <div>
-                        <Link to={apt.profile_id ? `/profile/${apt.profile_id}` : '#'} className="patient-name-link">
-                          <div className="patient-name">{apt.first_name} {apt.last_name || ''}</div>
-                        </Link>
-                        <div className="appointment-service">{apt.type || 'Richiesta'}</div>
-                      </div>
-                    </div>
-                    <div className="appointment-time">
-                      {apt.booking_accepted === false ? (
-                        <span className="status-marker rejected">Rifiutata</span>
-                      ) : (
-                        <span className="status-marker pending">In Attesa</span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="empty-state">Nessuna nuova richiesta.</div>
-              )}
+        {/* Bottom Section: Long Rectangle */}
+        <div className="dashboard-bottom-card glass-panel">
+          <div className="card-header-simple">
+            <div className="header-title-group">
+              <i className="ph-fill ph-activity" />
+              <h2>Attività Recente e Note</h2>
             </div>
-            <div className="card-footer">
-              <Link to="/incoming-bookings" className="view-more-btn">
-                Gestisci Richieste <i className="ph ph-arrow-right" />
-              </Link>
+          </div>
+          <div className="activity-placeholder">
+            <div className="activity-item">
+              <i className="ph ph-info" />
+              <p>Il sistema di prenotazione è ora sincronizzato con il nuovo database in tempo reale.</p>
             </div>
-          </GlassCard>
+            <div className="activity-item">
+              <i className="ph ph-clock-counter-clockwise" />
+              <p>Ultimo backup eseguito correttamente alle 04:00 di oggi.</p>
+            </div>
+          </div>
         </div>
+
       </div>
+
+      <BookingModal 
+        isOpen={isBookingOpen} 
+        onClose={() => setIsBookingOpen(false)}
+        initialDate={selectedSlot?.date}
+        initialTime={selectedSlot?.time}
+        onSuccess={fetchDashboardData}
+      />
     </Layout>
   );
 }

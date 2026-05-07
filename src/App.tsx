@@ -10,11 +10,13 @@ import RubricaPage from './pages/RubricaPage';
 import ProfilePage from './pages/ProfilePage';
 import BinPage from './pages/BinPage';
 import LoginPage from './pages/LoginPage';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <ToastProvider>
+    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+      <ThemeProvider>
+        <ToastProvider>
         <AuthProvider>
           <ConfirmProvider>
             <Routes>
@@ -32,6 +34,7 @@ export default function App() {
           </ConfirmProvider>
         </AuthProvider>
       </ToastProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

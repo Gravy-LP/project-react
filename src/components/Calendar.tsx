@@ -6,7 +6,9 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
 import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../lib/api';
+import { getAvailableSlots } from '../lib/booking-utils';
 import { formatPhoneNumber } from '../lib/formatters';
+import BookingModal from './BookingModal';
 import '../styles/calendar.css';
 import '../styles/modal.css';
 
@@ -54,6 +56,14 @@ export default function Calendar() {
   const [selApt, setSelApt] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [isCalMinimized, setIsCalMinimized] = useState(false);
   const [slideDir, setSlideDir] = useState<'slide-left' | 'slide-right' | ''>('');
   const [showNew, setShowNew] = useState(false);
   const [showDay, setShowDay] = useState(false);
@@ -104,12 +114,96 @@ export default function Calendar() {
   }, [fetchApts]);
 
   const y = curDate.getFullYear(), m = curDate.getMonth();
+  const t = new Date();
+  const ts = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+  useEffect(() => {
+    if (showNew) {
+      const initialDate = selDay || ts;
+      setNewDate(initialDate);
+      setIsCalMinimized(false);
+      updateAvailableSlots(initialDate, 'new');
+    }
+  }, [showNew, selDay]);
+
+  useEffect(() => {
+    if (editing && selApt) {
+      setEditDate(selApt.date);
+      setIsCalMinimized(true);
+      updateAvailableSlots(selApt.date, 'edit', selApt.booking_id_db || undefined);
+    }
+  }, [editing, selApt]);
+
+  const updateAvailableSlots = async (date: string, mode: 'new' | 'edit', ignoreId?: string) => {
+    setIsLoadingSlots(true);
+    const slots = await getAvailableSlots(date, ignoreId);
+    setAvailableSlots(slots);
+    setIsLoadingSlots(false);
+  };
+
+  const renderMiniCalendar = (selectedDate: string, onSelect: (ds: string) => void) => {
+    const vd = new Date(selectedDate || ts);
+    const vy = vd.getFullYear(), vm = vd.getMonth();
+    const vfd = new Date(vy, vm, 1).getDay();
+    const vdim = new Date(vy, vm + 1, 0).getDate();
+    const voff = vfd === 0 ? 6 : vfd - 1;
+    
+    const days = [];
+    for (let i = 0; i < voff; i++) days.push(<div key={`e-${i}`} className="mini-day empty"></div>);
+    
+    for (let d = 1; d <= vdim; d++) {
+      const ds = `${vy}-${String(vm + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const date = new Date(vy, vm, d);
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      const isSelected = selectedDate === ds;
+      
+      days.push(
+        <button
+          key={ds}
+          type="button"
+          className={`mini-day ${isWeekend ? 'weekend' : ''} ${isSelected ? 'active' : ''}`}
+          onClick={() => {
+            onSelect(ds);
+            setIsCalMinimized(true);
+          }}
+        >
+          {d}
+        </button>
+      );
+    }
+
+    if (isCalMinimized) {
+      const [yy, mm, dd] = selectedDate.split('-');
+      return (
+        <div className="mini-calendar-summary" onClick={() => setIsCalMinimized(false)}>
+          <div className="summary-date">
+            <i className="ph ph-calendar" />
+            <span>{dd}/{mm}/{yy}</span>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm">Cambia</button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mini-calendar animate-in">
+        <div className="mini-calendar-header">
+          {monthNames[vm]} {vy}
+        </div>
+        <div className="mini-calendar-weekdays">
+          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(w => <span key={w}>{w}</span>)}
+        </div>
+        <div className="mini-calendar-grid">
+          {days}
+        </div>
+      </div>
+    );
+  };
+
   const fd = new Date(y, m, 1).getDay();
   const dim = new Date(y, m + 1, 0).getDate();
   const off = fd === 0 ? 6 : fd - 1;
   const pmd = new Date(y, m, 0).getDate();
-  const t = new Date();
-  const ts = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 
   const ga = (ds: string) => apts.filter(a => a.date === ds);
   const dayApts = selDay ? ga(selDay).sort((a, b) => a.time.localeCompare(b.time)) : [];
@@ -299,8 +393,38 @@ export default function Calendar() {
                 <div className="appt-form-group"><label>Cognome</label><input name="eLn" defaultValue={selApt.last_name} /></div>
                 <div className="appt-form-group"><label>Email</label><input name="eEm" type="email" defaultValue={selApt.e_mail} /></div>
                 <div className="appt-form-group"><label>Telefono</label><input name="ePh" type="tel" defaultValue={selApt.phone_number} /></div>
-                <div className="appt-form-group"><label>Data *</label><input name="eDt" type="date" defaultValue={selApt.date} required /></div>
-                <div className="appt-form-group"><label>Orario *</label><input name="eTm" type="time" defaultValue={selApt.time} required /></div>
+                <div className="appt-form-group span-2">
+                  <label>Data Appuntamento *</label>
+                  {renderMiniCalendar(editDate || selApt.date, (ds) => {
+                    setEditDate(ds);
+                    updateAvailableSlots(ds, 'edit', selApt.booking_id_db);
+                  })}
+                  <input type="hidden" name="eDt" value={editDate || selApt.date} required />
+                </div>
+                <div className="appt-form-group span-2">
+                  <label>Orario Disponibile *</label>
+                  {isLoadingSlots ? (
+                    <div className="slot-hint">Caricamento...</div>
+                  ) : (
+                    <div className="slot-grid-compact">
+                      {/* Current time option if not in slots */}
+                      {!availableSlots.includes(selApt.time) && !editTime && (
+                        <button type="button" className="slot-chip active">{selApt.time}</button>
+                      )}
+                      {availableSlots.map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={`slot-chip ${(editTime || selApt.time) === s ? 'active' : ''}`}
+                          onClick={() => setEditTime(s)}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <input type="hidden" name="eTm" value={editTime || selApt.time} required />
+                </div>
                 <div className="appt-form-group span-2"><label>Tipo</label><select name="eTp" defaultValue={selApt.type}>{serviceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
                 <div className="appt-form-group span-2"><label>Stato</label><select name="eAc" defaultValue={String(selApt.booking_accepted)}><option value="null">In attesa</option><option value="true">Accettato</option><option value="false">Rifiutato</option></select></div>
                 <div className="appt-form-group span-2">
@@ -322,25 +446,12 @@ export default function Calendar() {
       </Modal>
 
       {/* New */}
-      <Modal isOpen={showNew} onClose={() => setShowNew(false)}>
-        <div className="appt-form-header"><div className="appt-form-icon"><i className="ph ph-calendar-plus" /></div><div><h2>Nuovo Appuntamento</h2><p>Compila i campi per registrare.</p></div></div>
-        <form onSubmit={handleNewSubmit}>
-          <div className="appt-form-grid">
-            <div className="appt-form-group"><label>Nome *</label><input name="firstName" placeholder="es. Mario" required /></div>
-            <div className="appt-form-group"><label>Cognome</label><input name="lastName" placeholder="es. Rossi" /></div>
-            <div className="appt-form-group"><label>Email</label><input name="email" type="email" placeholder="mario@esempio.it" /></div>
-            <div className="appt-form-group"><label>Telefono</label><input name="phone" type="tel" placeholder="+39 333 ..." /></div>
-            <div className="appt-form-group"><label>Data *</label><input name="date" type="date" defaultValue={selDay || ''} required /></div>
-            <div className="appt-form-group"><label>Orario *</label><input name="time" type="time" required /></div>
-            <div className="appt-form-group span-2"><label>Tipo</label><select name="type">{serviceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>
-            <div className="appt-form-group span-2"><label>Note</label><textarea name="notes" rows={3} placeholder="Info aggiuntive..." /></div>
-          </div>
-          <div className="appt-form-actions">
-            <span className="required-hint"><span className="required-star">*</span> obbligatori</span>
-            <div className="appt-form-btns"><button type="button" className="btn btn-ghost" onClick={() => setShowNew(false)}>Annulla</button><button type="submit" className="btn btn-primary"><i className="ph ph-check" /> Salva</button></div>
-          </div>
-        </form>
-      </Modal>
+      <BookingModal 
+        isOpen={showNew} 
+        onClose={() => setShowNew(false)}
+        initialDate={selDay || ts}
+        onSuccess={fetchApts}
+      />
     </div>
   );
 }

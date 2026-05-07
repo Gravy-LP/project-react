@@ -14,9 +14,13 @@ interface Booking {
   booking_accepted: boolean | null;
 }
 
-export default function NotificationBell() {
+interface NotificationBellProps {
+  isOpen: boolean;
+  setIsOpen: (val: boolean) => void;
+}
+
+export default function NotificationBell({ isOpen, setIsOpen }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Booking[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -45,23 +49,16 @@ export default function NotificationBell() {
     };
   }, []);
 
-  // Close on click outside
+  // Close on Escape
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false);
     };
-    document.addEventListener('click', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, []);
+  }, [setIsOpen]);
 
   const getInitials = (first: string, last: string | null) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
