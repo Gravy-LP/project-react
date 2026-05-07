@@ -9,6 +9,7 @@ import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
 import BookingFields from '../components/BookingFields';
 import { useLongPress } from '../hooks/useLongPress';
+import { useTranslation } from '../context/LanguageContext';
 import '../styles/rubrica.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -20,7 +21,19 @@ interface PatientCardProps {
   onNavigate: (path: string) => void;
 }
 
+const getLocaleTag = (lang: string) => {
+  switch(lang) {
+    case 'IT': return 'it-IT';
+    case 'EN': return 'en-US';
+    case 'ES': return 'es-ES';
+    case 'FR': return 'fr-FR';
+    case 'ZH': return 'zh-CN';
+    default: return 'it-IT';
+  }
+};
+
 function PatientCard({ patient, active, onActivateMenu, onNavigate }: PatientCardProps) {
+  const { language, t } = useTranslation();
   const longPressProps = useLongPress({
     onLongPress: (e) => {
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -32,7 +45,7 @@ function PatientCard({ patient, active, onActivateMenu, onNavigate }: PatientCar
 
   const initials = ((patient.first_name?.[0] || '') + (patient.last_name?.[0] || '')).toUpperCase();
   const formattedDate = patient.created_at
-    ? new Date(patient.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+    ? new Date(patient.created_at).toLocaleDateString(getLocaleTag(language), { day: '2-digit', month: 'short', year: 'numeric' })
     : 'N/A';
 
   return (
@@ -51,12 +64,12 @@ function PatientCard({ patient, active, onActivateMenu, onNavigate }: PatientCar
             </div>
             <div className="patient-card-date">
               <i className="ph ph-calendar-blank" />
-              Aggiunto il {formattedDate}
+              {t('rubrica.added_on')} {formattedDate}
             </div>
             {patient.booking_ids && patient.booking_ids.length > 0 && (
               <div className="patient-booking-count">
                 <i className="ph ph-ticket" />
-                {patient.booking_ids.length} prenotazion{patient.booking_ids.length === 1 ? 'e' : 'i'}
+                {patient.booking_ids.length} {patient.booking_ids.length === 1 ? t('rubrica.booking') : t('rubrica.bookings')}
               </div>
             )}
           </div>
@@ -80,7 +93,7 @@ function PatientCard({ patient, active, onActivateMenu, onNavigate }: PatientCar
           {!patient.e_mail && !patient.phone_number ? (
             <span className="contact-chip empty-chip">
               <i className="ph ph-warning" />
-              <span>Nessun contatto</span>
+              <span>{t('rubrica.no_contact')}</span>
             </span>
           ) : null}
         </div>
@@ -96,12 +109,12 @@ export default function RubricaPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const navigate = useNavigate();
+  const { language, t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const [withBooking, setWithBooking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeMenuPatient, setActiveMenuPatient] = useState<{id: string, x: number, y: number} | null>(null);
 
-  // Booking state for subform
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
   const [bookingTime, setBookingTime] = useState('');
   const [bookingType, setBookingType] = useState('');
@@ -110,11 +123,11 @@ export default function RubricaPage() {
   const loadPatients = useCallback(async () => {
     const { patients: data, error } = await fetchPatients();
     if (error) {
-      showToast('Errore nel caricamento pazienti', 'error');
+      showToast(t('common.error'), 'error');
       return;
     }
     setPatients(data || []);
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     loadPatients();
@@ -133,26 +146,17 @@ export default function RubricaPage() {
     };
   }, [loadPatients]);
 
-  const getInitials = (first: string, last: string | null) =>
-    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
 
-    // Validation
     if (!data.first_name || !data.last_name) {
-      showToast('Nome e cognome sono obbligatori', 'error');
+      showToast(t('rubrica.name_required'), 'error');
       return;
     }
     if (!data.e_mail && !data.phone_number) {
-      showToast('Fornire almeno un contatto (Email o Telefono)', 'error');
+      showToast(t('rubrica.contact_required'), 'error');
       return;
     }
 
@@ -160,7 +164,6 @@ export default function RubricaPage() {
 
     try {
       if (withBooking) {
-        // Option B: Create via Booking route (auto-creates profile)
         const res = await createBooking({
           first_name: data.first_name as string,
           last_name: data.last_name as string,
@@ -173,14 +176,13 @@ export default function RubricaPage() {
         });
 
         if (!res.success) {
-          showToast(res.error || 'Errore nella creazione', 'error');
+          showToast(res.error || t('common.error'), 'error');
         } else {
-          showToast('Paziente e prenotazione creati!', 'success');
+          showToast(t('rubrica.success_patient_booking'), 'success');
           setShowModal(false);
           loadPatients();
         }
       } else {
-        // Option A: Only create profile
         const res = await createPatient({
           first_name: data.first_name as string,
           last_name: data.last_name as string,
@@ -191,15 +193,15 @@ export default function RubricaPage() {
         });
 
         if (!res.success) {
-          showToast(res.error || 'Errore nella creazione', 'error');
+          showToast(res.error || t('common.error'), 'error');
         } else {
-          showToast('Profilo paziente creato!', 'success');
+          showToast(t('rubrica.success_patient'), 'success');
           setShowModal(false);
           loadPatients();
         }
       }
     } catch (err) {
-      showToast('Errore di rete', 'error');
+      showToast(t('common.error'), 'error');
     } finally {
       setLoading(false);
     }
@@ -220,26 +222,26 @@ export default function RubricaPage() {
     <Layout headerActions={
       <div className="header-action-group">
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <i className="ph ph-plus" /> Nuovo Paziente
+          <i className="ph ph-plus" /> {t('rubrica.new_patient')}
         </button>
         <div className="patient-count-badge">
           <i className="ph ph-users" />
-          <span>{patients.length} Pazienti</span>
+          <span>{patients.length} {t('rubrica.total_patients')}</span>
         </div>
       </div>
     }>
       <div className="glass-panel content-card">
         <div className="card-header">
           <div className="card-title-group">
-            <h2>Rubrica Pazienti</h2>
-            <p className="card-subtitle">Profili costruiti automaticamente dal sistema di prenotazione</p>
+            <h2>{t('rubrica.title')}</h2>
+            <p className="card-subtitle">{t('rubrica.subtitle')}</p>
           </div>
           <div className="filters">
             <div className="local-search-wrapper">
               <i className="ph ph-magnifying-glass" />
               <input
                 type="text"
-                placeholder="Filtra pazienti..."
+                placeholder={t('rubrica.filter_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -262,43 +264,43 @@ export default function RubricaPage() {
         ) : (
           <div className="empty-state-container">
             <div className="empty-state-icon"><i className="ph ph-address-book" /></div>
-            <h3>Nessun paziente salvato</h3>
-            <p>I profili vengono creati automaticamente quando approvi una prenotazione.</p>
+            <h3>{t('rubrica.empty_title')}</h3>
+            <p>{t('rubrica.empty_desc')}</p>
           </div>
         )}
       </div>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
         <div className="patient-form-header">
-          <h2>Nuovo Paziente</h2>
-          <p>Crea un nuovo profilo clinico o prenota un appuntamento.</p>
+          <h2>{t('rubrica.new_patient')}</h2>
+          <p>{t('rubrica.form_header_desc')}</p>
         </div>
 
         <form className="patient-form" onSubmit={handleCreateSubmit}>
           <div className="form-grid">
             <div className="form-group">
-              <label>Nome *</label>
+              <label>{t('calendar.first_name')} *</label>
               <input type="text" name="first_name" placeholder="es. Mario" required />
             </div>
             <div className="form-group">
-              <label>Cognome *</label>
+              <label>{t('calendar.last_name')} *</label>
               <input type="text" name="last_name" placeholder="es. Rossi" required />
             </div>
             <div className="form-group">
-              <label>Email</label>
+              <label>{t('calendar.email')}</label>
               <input type="email" name="e_mail" placeholder="mario@esempio.it" />
             </div>
             <div className="form-group">
-              <label>Telefono</label>
+              <label>{t('calendar.phone')}</label>
               <input type="tel" name="phone_number" placeholder="+39 ..." />
             </div>
             <div className="form-group">
-              <label>Data di Nascita</label>
+              <label>{t('rubrica.dob')}</label>
               <input type="date" name="date_of_birth" />
             </div>
             <div className="form-group full-width">
-              <label>Note Interne</label>
-              <textarea name="notes" placeholder="Note cliniche iniziali..." rows={3}></textarea>
+              <label>{t('rubrica.internal_notes')}</label>
+              <textarea name="notes" placeholder={t('rubrica.notes_placeholder')} rows={3}></textarea>
             </div>
           </div>
 
@@ -310,7 +312,7 @@ export default function RubricaPage() {
                 onChange={(e) => setWithBooking(e.target.checked)} 
               />
               <span className="slider"></span>
-              <span className="toggle-label">Prenota un appuntamento</span>
+              <span className="toggle-label">{t('rubrica.book_appointment')}</span>
             </label>
           </div>
 
@@ -326,16 +328,15 @@ export default function RubricaPage() {
           )}
 
           <div className="form-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)} disabled={loading}>Annulla</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)} disabled={loading}>{t('common.cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? <i className="ph ph-circle-notch animate-spin" /> : <i className="ph ph-user-plus" />}
-              {loading ? 'Creazione...' : 'Crea Paziente'}
+              {loading ? t('rubrica.creating') : t('rubrica.create_patient')}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Floating Touch Menu */}
       {activeMenuPatient && (
         <div className="touch-menu-overlay" onClick={() => setActiveMenuPatient(null)}>
           <div 
@@ -346,9 +347,9 @@ export default function RubricaPage() {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="touch-menu-header">Opzioni Paziente</div>
+            <div className="touch-menu-header">{t('rubrica.patient_options')}</div>
             <button className="touch-menu-item" onClick={() => { navigate(`/profile/${activeMenuPatient.id}`); setActiveMenuPatient(null); }}>
-              <i className="ph ph-user" /> Vedi Profilo
+              <i className="ph ph-user" /> {t('rubrica.view_profile')}
             </button>
           </div>
         </div>

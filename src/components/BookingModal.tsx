@@ -29,14 +29,16 @@ const serviceOptions = [
 
 import BookingFields from './BookingFields';
 
+import { useTranslation } from '../context/LanguageContext';
+
 export default function BookingModal({ isOpen, onClose, initialDate, initialTime, onSuccess }: BookingModalProps) {
   const { showToast } = useToast();
+  const { language, t } = useTranslation();
   const [date, setDate] = useState(initialDate || '');
   const [time, setTime] = useState(initialTime || '');
   const [type, setType] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Form State
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -44,7 +46,6 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     phone: '',
   });
 
-  // Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BookingPayload[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -57,7 +58,6 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
       setTime(initialTime || '');
       setType('');
       setNotes('');
-      // Reset form on open
       setFormData({
         firstName: '',
         lastName: '',
@@ -100,7 +100,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     });
     setSearchQuery('');
     setSearchResults([]);
-    showToast(`Caricato profilo di ${contact.first_name}`, 'success');
+    showToast(t('modal.contact_loaded').replace('{name}', contact.first_name || ''), 'success');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,26 +118,37 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     };
 
     if (!payload.first_name || !payload.booking_date || !time) {
-      showToast('Compila i campi obbligatori', 'error');
+      showToast(t('modal.required_fields'), 'error');
       return;
     }
 
     try {
       const res = await createBooking(payload);
       if (!res.success) {
-        showToast(res.error || 'Errore', 'error');
+        showToast(res.error || t('common.error'), 'error');
         return;
       }
-      showToast('Appuntamento registrato!', 'success');
+      showToast(t('booking.success'), 'success');
       onSuccess?.();
       onClose();
     } catch {
-      showToast('Errore di rete', 'error');
+      showToast(t('common.error'), 'error');
     }
   };
 
   const getInitials = (first: string, last: string | null | undefined) =>
     ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
+
+  const getLocaleTag = (lang: string) => {
+    switch(lang) {
+      case 'IT': return 'it-IT';
+      case 'EN': return 'en-US';
+      case 'ES': return 'es-ES';
+      case 'FR': return 'fr-FR';
+      case 'ZH': return 'zh-CN';
+      default: return 'it-IT';
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -146,8 +157,8 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
           <i className="ph ph-calendar-plus" />
         </div>
         <div>
-          <h2>Nuovo Appuntamento</h2>
-          <p>Registra un appuntamento per il <strong>{new Date(date).toLocaleDateString('it-IT')}</strong></p>
+          <h2>{t('modal.new_appointment')}</h2>
+          <p>{t('modal.register_for')} <strong>{new Date(date).toLocaleDateString(getLocaleTag(language))}</strong></p>
         </div>
       </div>
 
@@ -157,7 +168,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
           <input 
             className="search-input" 
             style={{ opacity: 1, pointerEvents: 'auto' }}
-            placeholder="Cerca paziente esistente per auto-completare..."
+            placeholder={t('modal.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -171,7 +182,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
                 <div className="search-item-avatar">{getInitials(res.first_name, res.last_name)}</div>
                 <div className="search-item-info">
                   <div className="search-item-name">{res.first_name} {res.last_name}</div>
-                  <div className="search-item-contact">{res.phone_number || res.e_mail || 'Nessun recapito'}</div>
+                  <div className="search-item-contact">{res.phone_number || res.e_mail || t('modal.no_contact_info')}</div>
                 </div>
               </div>
             ))}
@@ -182,7 +193,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
       <form onSubmit={handleSubmit}>
         <div className="appt-form-grid">
           <div className="appt-form-group">
-            <label>Nome *</label>
+            <label>{t('calendar.first_name')} *</label>
             <input 
               name="firstName" 
               placeholder="es. Mario" 
@@ -192,7 +203,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
             />
           </div>
           <div className="appt-form-group">
-            <label>Cognome</label>
+            <label>{t('calendar.last_name')}</label>
             <input 
               name="lastName" 
               placeholder="es. Rossi" 
@@ -201,7 +212,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
             />
           </div>
           <div className="appt-form-group">
-            <label>Email</label>
+            <label>{t('calendar.email')}</label>
             <input 
               name="email" 
               type="email" 
@@ -211,7 +222,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
             />
           </div>
           <div className="appt-form-group">
-            <label>Telefono</label>
+            <label>{t('calendar.phone')}</label>
             <input 
               name="phone" 
               type="tel" 
@@ -230,11 +241,11 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
         </div>
 
         <div className="appt-form-actions">
-          <span className="required-hint">* campi obbligatori</span>
+          <span className="required-hint">{t('modal.required_hint')}</span>
           <div className="appt-form-btns">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Annulla</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button type="submit" className="btn btn-primary">
-              <i className="ph ph-check" /> Salva Appuntamento
+              <i className="ph ph-check" /> {t('modal.save_appointment')}
             </button>
           </div>
         </div>

@@ -1,56 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSwipe } from '../hooks/useSwipe';
-import Modal from '../components/Modal';
-import { useToast } from '../context/ToastContext';
-import { useConfirm } from '../context/ConfirmContext';
-import { supabase } from '../lib/supabase';
-import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../lib/api';
-import { getAvailableSlots } from '../lib/booking-utils';
-import { formatPhoneNumber } from '../lib/formatters';
-import BookingModal from './BookingModal';
-import BookingFields from './BookingFields';
-import '../styles/calendar.css';
-import '../styles/modal.css';
-
-interface Appointment {
-  id: number;
-  booking_id_db: string | null;
-  first_name: string;
-  last_name: string;
-  e_mail: string;
-  phone_number: string;
-  type: string;
-  booking_accepted: boolean | null;
-  notes: string;
-  patient: string;
-  date: string;
-  time: string;
-  service: string;
-  status: string;
-  appointment_complete: boolean;
-  profile_id: string | null;
-}
-
-const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-const serviceOptions = [
-  { value: '', label: 'Seleziona...' },
-  { value: 'odontoiatria', label: 'Odontoiatria' },
-  { value: 'igiene', label: 'Igiene Orale' },
-  { value: 'sbiancamento', label: 'Sbiancamento' },
-  { value: 'ortodonzia', label: 'Ortodonzia' },
-  { value: 'implantologia', label: 'Implantologia' },
-  { value: 'estetica', label: 'Medicina Estetica' },
-  { value: 'ginecologia', label: 'Ginecologia' },
-  { value: 'altro', label: 'Altro' },
-];
-
-function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase();
-}
+import { useTranslation } from '../context/LanguageContext';
 
 export default function Calendar() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [apts, setApts] = useState<Appointment[]>([]);
   const [curDate, setCurDate] = useState(new Date());
   const [selDay, setSelDay] = useState<string | null>(null);
@@ -70,7 +22,6 @@ export default function Calendar() {
   const [showDay, setShowDay] = useState(false);
   const [showDet, setShowDet] = useState(false);
   
-  // Standardized edit state
   const [eDate, setEDate] = useState('');
   const [eTime, setETime] = useState('');
   const [eType, setEType] = useState('');
@@ -83,6 +34,10 @@ export default function Calendar() {
   const [ePh, setEPh] = useState('');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  const monthNames = t('calendar.months') as unknown as string[];
+  const weekdays = t('calendar.weekdays') as unknown as string[];
+  const weekdaysShort = t('calendar.weekdays_short') as unknown as string[];
 
   const fetchApts = useCallback(async () => {
     try {
@@ -106,8 +61,8 @@ export default function Calendar() {
           profile_id: row.profile_id ?? null,
         };
       }));
-    } catch { showToast('Errore caricamento', 'error'); }
-  }, [showToast]);
+    } catch { showToast(t('common.error'), 'error'); }
+  }, [showToast, t]);
 
   useEffect(() => { 
     fetchApts(); 
@@ -127,17 +82,17 @@ export default function Calendar() {
   }, [fetchApts]);
 
   const y = curDate.getFullYear(), m = curDate.getMonth();
-  const t = new Date();
-  const ts = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   useEffect(() => {
     if (showNew) {
-      const initialDate = selDay || ts;
+      const initialDate = selDay || todayStr;
       setNewDate(initialDate);
       setIsCalMinimized(false);
       updateAvailableSlots(initialDate, 'new');
     }
-  }, [showNew, selDay]);
+  }, [showNew, selDay, todayStr]);
 
   useEffect(() => {
     if (editing && selApt) {
@@ -163,7 +118,7 @@ export default function Calendar() {
   };
 
   const renderMiniCalendar = (selectedDate: string, onSelect: (ds: string) => void) => {
-    const vd = new Date(selectedDate || ts);
+    const vd = new Date(selectedDate || todayStr);
     const vy = vd.getFullYear(), vm = vd.getMonth();
     const vfd = new Date(vy, vm, 1).getDay();
     const vdim = new Date(vy, vm + 1, 0).getDate();
@@ -201,7 +156,7 @@ export default function Calendar() {
             <i className="ph ph-calendar" />
             <span>{dd}/{mm}/{yy}</span>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm">Cambia</button>
+          <button type="button" className="btn btn-ghost btn-sm">{t('calendar.change')}</button>
         </div>
       );
     }
@@ -212,7 +167,7 @@ export default function Calendar() {
           {monthNames[vm]} {vy}
         </div>
         <div className="mini-calendar-weekdays">
-          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(w => <span key={w}>{w}</span>)}
+          {weekdaysShort.map(w => <span key={w}>{w}</span>)}
         </div>
         <div className="mini-calendar-grid">
           {days}
@@ -230,31 +185,6 @@ export default function Calendar() {
   const dayApts = selDay ? ga(selDay).sort((a, b) => a.time.localeCompare(b.time)) : [];
   const fsd = selDay ? (() => { const [yy, mm, dd] = selDay.split('-'); return `${dd} ${monthNames[parseInt(mm) - 1]} ${yy}`; })() : '';
 
-  const handleNewSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = e.currentTarget;
-    const gv = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value?.trim() || '';
-    const fn = gv('firstName'), ln = gv('lastName') || null, em = gv('email') || null;
-    const ph = gv('phone') || null, d = gv('date'), ti = gv('time');
-    const tp = (f.elements.namedItem('type') as HTMLSelectElement)?.value || null;
-    const nt = (f.elements.namedItem('notes') as HTMLTextAreaElement)?.value?.trim() || null;
-    if (!fn || !d || !ti) return;
-    try {
-      const res = await createBooking({ 
-        first_name: fn, 
-        last_name: ln, 
-        e_mail: em, 
-        phone_number: ph, 
-        booking_date: `${d}T${ti}:00`, 
-        type: tp, 
-        notes: nt, 
-        booking_accepted: true 
-      });
-      if (!res.success) { showToast(res.error ?? 'Errore', 'error'); return; }
-      showToast(`Appuntamento salvato!`, 'success'); setShowNew(false); fetchApts();
-    } catch { showToast('Errore di rete', 'error'); }
-  };
-
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selApt?.booking_id_db) return;
@@ -271,9 +201,9 @@ export default function Calendar() {
         appointment_complete: eComplete, 
         notes: eNotes 
       });
-      if (!res.success) { showToast(res.error ?? 'Errore', 'error'); return; }
-      showToast('Aggiornato!', 'success'); setShowDet(false); setEditing(false); fetchApts();
-    } catch { showToast('Errore di rete', 'error'); }
+      if (!res.success) { showToast(res.error ?? t('common.error'), 'error'); return; }
+      showToast(t('calendar.update_success'), 'success'); setShowDet(false); setEditing(false); fetchApts();
+    } catch { showToast(t('common.error'), 'error'); }
   };
 
   const { onTouchStart, onTouchEnd } = useSwipe({
@@ -283,14 +213,14 @@ export default function Calendar() {
 
   const handleDel = async (a: Appointment) => {
     if (!a.booking_id_db) return;
-    const ok = await confirm({ title: 'Elimina?', message: `Eliminare l'appuntamento di ${a.patient}?` });
+    const ok = await confirm({ title: t('calendar.delete_confirm_title'), message: t('calendar.delete_confirm_msg').replace('{name}', a.patient) });
     if (!ok) return;
     try {
       const res = await deleteBooking(a.booking_id_db);
-      if (!res.success) { showToast(res.error || 'Errore', 'error'); return; }
+      if (!res.success) { showToast(res.error || t('common.error'), 'error'); return; }
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-      showToast('Eliminato!', 'success'); setShowDet(false); fetchApts();
-    } catch { showToast('Errore di rete', 'error'); }
+      showToast(t('calendar.delete_success'), 'success'); setShowDet(false); fetchApts();
+    } catch { showToast(t('common.error'), 'error'); }
   };
 
   const changeMonth = (offset: number) => {
@@ -313,7 +243,7 @@ export default function Calendar() {
         <div className="current-month">{monthNames[m]} {y}</div>
         <div className="calendar-actions">
           <button className="btn btn-ghost btn-icon" onClick={() => changeMonth(-1)}><i className="ph ph-caret-left" /></button>
-          <button className="btn btn-secondary btn-sm" onClick={() => { setSlideDir(''); setCurDate(new Date()); }}>Oggi</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => { setSlideDir(''); setCurDate(new Date()); }}>{t('calendar.today')}</button>
           <button className="btn btn-ghost btn-icon" onClick={() => changeMonth(1)}><i className="ph ph-caret-right" /></button>
         </div>
       </div>
@@ -324,7 +254,7 @@ export default function Calendar() {
         onTouchEnd={onTouchEnd}
       >
         <div className="weekday-header">
-          {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <span key={d}>{d}</span>)}
+          {weekdays.map(d => <span key={d}>{d}</span>)}
         </div>
         <div className="days-grid">
           {Array.from({ length: off }, (_, i) => (
@@ -335,7 +265,7 @@ export default function Calendar() {
             const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const da = ga(ds); const lim = da.length > 3 ? 2 : 3; const disp = da.slice(0, lim); const rem = da.length - lim;
             return (
-              <div key={ds} className={`day-cell${ds === ts ? ' today' : ''}`} onClick={() => { setSelDay(ds); setShowDay(true); }}>
+              <div key={ds} className={`day-cell${ds === todayStr ? ' today' : ''}`} onClick={() => { setSelDay(ds); setShowDay(true); }}>
                 <span className="day-num">{day}</span>
                 {da.length > 0 && (
                   <div className="events-container">
@@ -345,7 +275,7 @@ export default function Calendar() {
                         <span className="event-time">{a.time}</span><span className="event-name">{a.patient}</span>
                       </div>
                     ))}
-                    {rem > 0 && <div className="more-events" onClick={e => { e.stopPropagation(); setSelDay(ds); setShowDay(true); }}><i className="ph ph-plus-circle" /> {rem} altri</div>}
+                    {rem > 0 && <div className="more-events" onClick={e => { e.stopPropagation(); setSelDay(ds); setShowDay(true); }}><i className="ph ph-plus-circle" /> {rem} {t('calendar.others')}</div>}
                   </div>
                 )}
               </div>
@@ -357,9 +287,8 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Day Schedule */}
       <Modal isOpen={showDay} onClose={() => setShowDay(false)}>
-        <div className="schedule-header"><h2>Agenda del Giorno</h2><p className="schedule-date">{fsd}</p></div>
+        <div className="schedule-header"><h2>{t('calendar.agenda_title')}</h2><p className="schedule-date">{fsd}</p></div>
         <div className="schedule-list">
           {dayApts.length > 0 ? dayApts.map(a => (
             <div key={a.id} className="schedule-item glass-panel" onClick={() => { setSelApt(a); setEditing(false); setShowDet(true); }}>
@@ -367,12 +296,11 @@ export default function Calendar() {
               <div className="schedule-patient"><div className="appt-initials-sm">{getInitials(a.patient)}</div><div><span className="sched-patient-name">{a.patient}</span><span className="service-name">{a.service}</span></div></div>
               <span className={`status-indicator ${a.status.toLowerCase()}`} />
             </div>
-          )) : <div className="empty-schedule"><i className="ph ph-calendar-blank" /><p>Nessun appuntamento</p></div>}
+          )) : <div className="empty-schedule"><i className="ph ph-calendar-blank" /><p>{t('calendar.no_appointments')}</p></div>}
         </div>
-        <button className="add-appt-btn btn btn-primary" onClick={() => setShowNew(true)}><i className="ph ph-plus" /> Nuovo Appuntamento</button>
+        <button className="add-appt-btn btn btn-primary" onClick={() => setShowNew(true)}><i className="ph ph-plus" /> {t('calendar.new_appointment')}</button>
       </Modal>
 
-      {/* Detail / Edit */}
       <Modal isOpen={showDet} onClose={() => { setShowDet(false); setEditing(false); }}>
         {selApt && !editing ? (
           <>
@@ -380,31 +308,31 @@ export default function Calendar() {
             <div className="modal-info">
               <div className="info-item"><i className="ph ph-calendar" /><span>{selApt.date}</span></div>
               <div className="info-item"><i className="ph ph-clock" /><span>{selApt.time}</span></div>
-              <div className="info-item"><i className="ph ph-tag" /><span className={`status-pill ${selApt.status.toLowerCase()}`}>{selApt.status}</span></div>
+              <div className="info-item"><i className="ph ph-tag" /><span className={`status-pill ${selApt.status.toLowerCase()}`}>{t(`calendar.status_${selApt.status.toLowerCase()}`)}</span></div>
               <div className="info-item"><i className="ph ph-envelope" /><span>{selApt.e_mail || '—'}</span></div>
               <div className="info-item"><i className="ph ph-phone" /><span>{formatPhoneNumber(selApt.phone_number)}</span></div>
               <div className="info-item"><i className="ph ph-stethoscope" /><span>{selApt.type || '—'}</span></div>
             </div>
-            {selApt.notes && <div className="modal-notes"><div className="notes-label"><i className="ph ph-note" /> Note</div><p>{selApt.notes}</p></div>}
+            {selApt.notes && <div className="modal-notes"><div className="notes-label"><i className="ph ph-note" /> {t('booking.notes')}</div><p>{selApt.notes}</p></div>}
             <div className="modal-footer">
               {selApt.profile_id && (
                 <button className="btn btn-ghost" onClick={() => navigate(`/profile/${selApt.profile_id}`)}>
-                  <i className="ph ph-user" /> Vai al Profilo
+                  <i className="ph ph-user" /> {t('calendar.go_to_profile')}
                 </button>
               )}
-              <button className="btn btn-primary" onClick={() => setEditing(true)}>Modifica</button>
-              <button className="btn btn-secondary" onClick={() => setShowDet(false)}>Chiudi</button>
+              <button className="btn btn-primary" onClick={() => setEditing(true)}>{t('calendar.edit_title')}</button>
+              <button className="btn btn-secondary" onClick={() => setShowDet(false)}>{t('common.cancel')}</button>
             </div>
           </>
         ) : selApt && editing ? (
           <>
-            <div className="appt-form-header"><div className="appt-form-icon"><i className="ph ph-pencil-simple" /></div><div><h2>Modifica</h2><p>Aggiorna i dati di <strong>{selApt.patient}</strong>.</p></div></div>
+            <div className="appt-form-header"><div className="appt-form-icon"><i className="ph ph-pencil-simple" /></div><div><h2>{t('calendar.edit_title')}</h2><p>{t('calendar.update_data')} <strong>{selApt.patient}</strong>.</p></div></div>
             <form onSubmit={handleEditSubmit}>
               <div className="appt-form-grid">
-                <div className="appt-form-group"><label>Nome *</label><input value={eFn} onChange={e => setEFn(e.target.value)} required /></div>
-                <div className="appt-form-group"><label>Cognome</label><input value={eLn} onChange={e => setELn(e.target.value)} /></div>
-                <div className="appt-form-group"><label>Email</label><input type="email" value={eEm} onChange={e => setEEm(e.target.value)} /></div>
-                <div className="appt-form-group"><label>Telefono</label><input type="tel" value={ePh} onChange={e => setEPh(e.target.value)} /></div>
+                <div className="appt-form-group"><label>{t('calendar.first_name')} *</label><input value={eFn} onChange={e => setEFn(e.target.value)} required /></div>
+                <div className="appt-form-group"><label>{t('calendar.last_name')}</label><input value={eLn} onChange={e => setELn(e.target.value)} /></div>
+                <div className="appt-form-group"><label>{t('calendar.email')}</label><input type="email" value={eEm} onChange={e => setEEm(e.target.value)} /></div>
+                <div className="appt-form-group"><label>{t('calendar.phone')}</label><input type="tel" value={ePh} onChange={e => setEPh(e.target.value)} /></div>
                 
                 <BookingFields 
                   date={eDate} setDate={setEDate}
@@ -414,29 +342,28 @@ export default function Calendar() {
                   ignoreBookingId={selApt.booking_id_db || undefined}
                 />
 
-                <div className="appt-form-group span-2"><label>Stato</label><select value={eStatus} onChange={e => setEStatus(e.target.value)}><option value="null">In attesa</option><option value="true">Accettato</option><option value="false">Rifiutato</option></select></div>
+                <div className="appt-form-group span-2"><label>{t('calendar.status')}</label><select value={eStatus} onChange={e => setEStatus(e.target.value)}><option value="null">{t('calendar.status_pending')}</option><option value="true">{t('calendar.status_accepted')}</option><option value="false">{t('calendar.status_rejected')}</option></select></div>
                 <div className="appt-form-group span-2">
                   <label className="toggle-switch">
                     <input type="checkbox" checked={eComplete} onChange={e => setEComplete(e.target.checked)} />
                     <span className="slider"></span>
-                    <span className="toggle-label">Visita Completata</span>
+                    <span className="toggle-label">{t('calendar.visit_completed')}</span>
                   </label>
                 </div>
               </div>
               <div className="appt-form-actions">
-                <button type="button" className="btn btn-ghost text-danger" onClick={() => handleDel(selApt)}><i className="ph ph-trash" /> Elimina</button>
-                <div className="appt-form-btns"><button type="button" className="btn btn-ghost" onClick={() => setEditing(false)}>Annulla</button><button type="submit" className="btn btn-primary"><i className="ph ph-floppy-disk" /> Salva</button></div>
+                <button type="button" className="btn btn-ghost text-danger" onClick={() => handleDel(selApt)}><i className="ph ph-trash" /> {t('common.delete')}</button>
+                <div className="appt-form-btns"><button type="button" className="btn btn-ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button><button type="submit" className="btn btn-primary"><i className="ph ph-floppy-disk" /> {t('common.save')}</button></div>
               </div>
             </form>
           </>
         ) : null}
       </Modal>
 
-      {/* New */}
       <BookingModal 
         isOpen={showNew} 
         onClose={() => setShowNew(false)}
-        initialDate={selDay || ts}
+        initialDate={selDay || todayStr}
         onSuccess={fetchApts}
       />
     </div>
