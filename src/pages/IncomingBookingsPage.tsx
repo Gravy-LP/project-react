@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useLongPress } from '../hooks/useLongPress';
 import { supabase } from '../lib/supabase';
+import { fetchBookings, deleteBooking, updateBooking, createBooking } from '../lib/api';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -34,32 +35,31 @@ export default function IncomingBookingsPage() {
   const highlightId = searchParams.get('highlight');
   const [activeMenuBooking, setActiveMenuBooking] = useState<{id: string, x: number, y: number} | null>(null);
 
-  const fetchBookings = useCallback(async () => {
-    try {
-      const res = await fetch('/api/bookings');
-      const json = await res.json();
-      setAllBookings(json.bookings || []);
-    } catch {
+  const fetchBookingsData = useCallback(async () => {
+    const { bookings, error } = await fetchBookings(false);
+    if (error) {
       showToast('Errore nel caricamento', 'error');
+    } else {
+      setAllBookings((bookings as Booking[]) || []);
     }
   }, [showToast]);
 
   useEffect(() => { 
-    fetchBookings(); 
+    fetchBookingsData(); 
 
     const channel = supabase
       .channel('incoming-booking-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Booking' },
-        () => fetchBookings()
+        () => fetchBookingsData()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchBookings]);
+  }, [fetchBookingsData]);
 
   // Highlight effect
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function IncomingBookingsPage() {
   const refusedBookings = filteredBookings.filter((b) => b.booking_accepted === false);
 
   const getInitials = (name: string) =>
-    name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+    name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'N/A';
@@ -104,46 +104,31 @@ export default function IncomingBookingsPage() {
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
       title: 'Elimina prenotazione?',
-      message: "Sei sicuro di voler eliminare questa prenotazione? L'azione non può essere annullata.",
+      message: "Sei sicuro di voler spostare questa prenotazione nel cestino?",
     });
     if (!confirmed) return;
 
-    try {
-      const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const json = await res.json();
-        showToast(json.error || "Errore durante l'eliminazione", 'error');
-        return;
-      }
+    const res = await deleteBooking(id);
+    if (res.success) {
       if (window.navigator.vibrate) window.navigator.vibrate(50);
-      showToast('Prenotazione eliminata con successo!', 'success');
+      showToast('Prenotazione spostata nel cestino!', 'success');
       setAllBookings((prev) => prev.filter((b) => b.booking_id_db !== id));
-    } catch {
-      showToast('Errore di rete', 'error');
+    } else {
+      showToast(res.error || "Errore durante l'eliminazione", 'error');
     }
   };
 
   const handleUpdateStatus = async (id: string, status: boolean | null) => {
-    try {
-      const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking_accepted: status }),
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        showToast(json.error || "Errore durante l'aggiornamento", 'error');
-        return;
-      }
+    const res = await updateBooking(id, { booking_accepted: status });
+    if (res.success) {
       if (window.navigator.vibrate) window.navigator.vibrate(30);
       showToast(
         `Prenotazione ${status === null ? 'ripristinata' : status ? 'accettata' : 'rifiutata'} con successo!`,
         'success'
       );
-      // Refresh data
-      fetchBookings();
-    } catch {
-      showToast('Errore di rete', 'error');
+      fetchBookingsData();
+    } else {
+      showToast(res.error || "Errore durante l'aggiornamento", 'error');
     }
   };
 
@@ -162,22 +147,13 @@ export default function IncomingBookingsPage() {
       booking_accepted: null,
     };
 
-    try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        showToast(json.error || 'Errore nella creazione', 'error');
-        return;
-      }
+    const res = await createBooking(data);
+    if (res.success) {
       showToast('Prenotazione creata con successo!', 'success');
       setShowNewBookingModal(false);
-      fetchBookings();
-    } catch {
-      showToast('Errore di rete', 'error');
+      fetchBookingsData();
+    } else {
+      showToast(res.error || 'Errore nella creazione', 'error');
     }
   };
 

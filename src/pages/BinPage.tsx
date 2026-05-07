@@ -59,15 +59,17 @@ export default function BinPage() {
     // We need to add permanent=true query param support or update the deleteBooking function
     // For now, let's call fetch directly or assume deleteBooking handles it if we update it
     try {
-      const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}&permanent=true`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('Prenotazione eliminata definitivamente', 'success');
-        setItems(prev => prev.filter(b => b.booking_id_db !== id));
-      } else {
-        showToast('Errore durante l\'eliminazione', 'error');
-      }
-    } catch {
-      showToast('Errore di rete', 'error');
+      const { error } = await supabase
+        .from('Booking')
+        .delete()
+        .eq('booking_id_db', id);
+
+      if (error) throw error;
+      showToast('Prenotazione eliminata definitivamente', 'success');
+      setItems(prev => prev.filter(b => b.booking_id_db !== id));
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast('Errore durante l\'eliminazione', 'error');
     }
   };
 
@@ -86,15 +88,17 @@ export default function BinPage() {
                 const ok = await confirm({ title: 'Svuotare il cestino?', message: 'Tutte le prenotazioni verranno eliminate definitivamente.' });
                 if (!ok) return;
                 try {
-                  const res = await fetch('/api/bookings/bin', { method: 'DELETE' });
-                  if (res.ok) {
-                    showToast('Cestino svuotato', 'success');
-                    setItems([]);
-                  } else {
-                    showToast('Errore durante lo svuotamento', 'error');
-                  }
-                } catch {
-                  showToast('Errore di rete', 'error');
+                  const { error } = await supabase
+                    .from('Booking')
+                    .delete()
+                    .eq('is_deleted', true);
+                  
+                  if (error) throw error;
+                  showToast('Cestino svuotato', 'success');
+                  setItems([]);
+                } catch (err) {
+                  console.error('Empty bin error:', err);
+                  showToast('Errore durante lo svuotamento', 'error');
                 }
               }}
             >

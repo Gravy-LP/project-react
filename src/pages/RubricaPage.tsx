@@ -11,6 +11,106 @@ import '../styles/rubrica.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
 
+interface PatientCardProps {
+  patient: PatientProfile;
+  active: boolean;
+  onActivateMenu: (info: { id: string; x: number; y: number }) => void;
+  onDelete: (id: string) => void;
+  onNavigate: (path: string) => void;
+}
+
+function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: PatientCardProps) {
+  const longPressProps = useLongPress({
+    onLongPress: (e) => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      onActivateMenu({ id: patient.id, x: clientX, y: clientY });
+      if (window.navigator.vibrate) window.navigator.vibrate(20);
+    },
+  });
+
+  const initials = ((patient.first_name?.[0] || '') + (patient.last_name?.[0] || '')).toUpperCase();
+  const formattedDate = patient.created_at
+    ? new Date(patient.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
+    : 'N/A';
+
+  return (
+    <div
+      className={`patient-card glass-panel ${active ? 'row-active' : ''}`}
+      {...longPressProps}
+      style={{ cursor: 'default' }}
+    >
+      <div className="patient-card-body">
+        <div className="patient-card-header">
+          <div className="patient-avatar">{initials}</div>
+          <div className="patient-card-info">
+            <div className="patient-card-name">
+              {patient.first_name} {patient.last_name || ''}
+            </div>
+            <div className="patient-card-date">
+              <i className="ph ph-calendar-blank" />
+              Aggiunto il {formattedDate}
+            </div>
+            {patient.booking_ids && patient.booking_ids.length > 0 && (
+              <div className="patient-booking-count">
+                <i className="ph ph-ticket" />
+                {patient.booking_ids.length} prenotazion{patient.booking_ids.length === 1 ? 'e' : 'i'}
+              </div>
+            )}
+          </div>
+          <div className="patient-card-top-actions">
+            <button
+              className="btn btn-sm btn-secondary"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate(`/profile/${patient.id}`);
+              }}
+            >
+              <i className="ph ph-arrow-right" />
+              Visualizza
+            </button>
+            <button
+              className="delete-patient-btn hide-mobile"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(patient.id);
+              }}
+              title="Elimina profilo"
+            >
+              <i className="ph ph-trash" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="patient-card-footer">
+        <div className="patient-card-contacts">
+          {patient.e_mail ? (
+            <a href={`mailto:${patient.e_mail}`} className="contact-chip email-chip">
+              <i className="ph ph-envelope-simple" />
+              <span>{patient.e_mail}</span>
+            </a>
+          ) : null}
+          {patient.phone_number ? (
+            <a href={`tel:${patient.phone_number}`} className="contact-chip phone-chip">
+              <i className="ph ph-phone" />
+              <span>{patient.phone_number}</span>
+            </a>
+          ) : null}
+          {!patient.e_mail && !patient.phone_number ? (
+            <span className="contact-chip empty-chip">
+              <i className="ph ph-warning" />
+              <span>Nessun contatto</span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RubricaPage() {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,77 +277,16 @@ export default function RubricaPage() {
 
         {filteredPatients.length > 0 ? (
           <div className="patients-grid">
-            {filteredPatients.map((patient) => {
-              const longPressProps = useLongPress({
-                onLongPress: (e) => {
-                  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                  setActiveMenuPatient({ id: patient.id, x: clientX, y: clientY });
-                  if (window.navigator.vibrate) window.navigator.vibrate(20);
-                },
-                onClick: () => navigate(`/profile/${patient.id}`)
-              });
-
-              return (
-                <div 
-                  className={`patient-card glass-panel ${activeMenuPatient?.id === patient.id ? 'row-active' : ''}`} 
-                  key={patient.id} 
-                  {...longPressProps}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="patient-card-header">
-                    <div className="patient-avatar">
-                      {getInitials(patient.first_name, patient.last_name)}
-                    </div>
-                    <div className="patient-card-info">
-                      <div className="patient-card-name">
-                        {patient.first_name} {patient.last_name || ''}
-                      </div>
-                      <div className="patient-card-date">
-                        <i className="ph ph-calendar-blank" />
-                        Aggiunto il {formatDate(patient.created_at)}
-                      </div>
-                      {patient.booking_ids && patient.booking_ids.length > 0 && (
-                        <div className="patient-booking-count">
-                          <i className="ph ph-ticket" />
-                          {patient.booking_ids.length} prenotazion{patient.booking_ids.length === 1 ? 'e' : 'i'}
-                        </div>
-                      )}
-                    </div>
-                    <button 
-                      className="delete-patient-btn hide-mobile" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(patient.id);
-                      }} 
-                      title="Elimina profilo"
-                    >
-                      <i className="ph ph-trash" />
-                    </button>
-                  </div>
-                  <div className="patient-card-contacts">
-                    {patient.e_mail && (
-                      <a href={`mailto:${patient.e_mail}`} className="contact-chip email-chip">
-                        <i className="ph ph-envelope-simple" />
-                        <span>{patient.e_mail}</span>
-                      </a>
-                    )}
-                    {patient.phone_number && (
-                      <a href={`tel:${patient.phone_number}`} className="contact-chip phone-chip">
-                        <i className="ph ph-phone" />
-                        <span>{patient.phone_number}</span>
-                      </a>
-                    )}
-                    {!patient.e_mail && !patient.phone_number && (
-                      <span className="contact-chip empty-chip">
-                        <i className="ph ph-warning" />
-                        <span>Nessun contatto</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {filteredPatients.map((patient) => (
+              <PatientCard
+                key={patient.id}
+                patient={patient}
+                active={activeMenuPatient?.id === patient.id}
+                onActivateMenu={setActiveMenuPatient}
+                onDelete={handleDelete}
+                onNavigate={navigate}
+              />
+            ))}
           </div>
         ) : (
           <div className="empty-state-container">

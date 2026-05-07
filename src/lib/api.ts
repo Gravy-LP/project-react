@@ -1,7 +1,8 @@
 /**
  * Client-side API helpers.
- * All write operations go through the Express API server.
+ * Refactored to use Supabase directly for Netlify compatibility.
  */
+import { supabase } from './supabase';
 
 export interface BookingPayload {
   readonly booking_id_db?: string | null;
@@ -26,23 +27,20 @@ export interface BookingResult {
 
 export async function createBooking(payload: BookingPayload): Promise<BookingResult> {
   try {
-    const res = await fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        first_name:       payload.first_name,
-        last_name:        payload.last_name        ?? null,
-        e_mail:           payload.e_mail           ?? null,
-        phone_number:     payload.phone_number     ?? null,
-        booking_date:     payload.booking_date     ?? null,
-        type:             payload.type             ?? null,
-        booking_accepted: payload.booking_accepted ?? null,
-        notes:            payload.notes            ?? null,
-      }),
-    });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
-    return { success: true, booking: json.booking };
+    const booking_id_db = payload.booking_id_db || crypto.randomUUID();
+    const { data, error } = await supabase
+      .from('Booking')
+      .insert([{
+        ...payload,
+        booking_id_db,
+        booking_date: payload.booking_date ? new Date(payload.booking_date).toISOString() : null,
+        is_deleted: false
+      }])
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, booking: data };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
@@ -50,9 +48,12 @@ export async function createBooking(payload: BookingPayload): Promise<BookingRes
 
 export async function deleteBooking(id: string): Promise<BookingResult> {
   try {
-    const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    const { error } = await supabase
+      .from('Booking')
+      .update({ is_deleted: true })
+      .eq('booking_id_db', id);
+
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };
@@ -61,52 +62,59 @@ export async function deleteBooking(id: string): Promise<BookingResult> {
 
 export async function fetchBookings(incomingOnly: boolean = false): Promise<{ bookings?: BookingPayload[], error?: string }> {
   try {
-    const url = incomingOnly ? '/api/bookings?incoming=true' : '/api/bookings';
-    const res = await fetch(url);
-    const json = await res.json();
-    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
-    return { bookings: json.bookings };
+    let query = supabase
+      .from('Booking')
+      .select('*')
+      .eq('is_deleted', false);
+
+    if (incomingOnly) {
+      query = query.or('booking_accepted.is.null,booking_accepted.eq.false');
+    }
+
+    const { data, error } = await query.order('booking_date', { ascending: true });
+    if (error) return { error: error.message };
+    return { bookings: data || [] };
   } catch (err) {
     return { error: (err as Error).message };
   }
 }
 
 export async function updateBookingStatus(id: string, accepted: boolean): Promise<BookingResult> {
-  try {
-    const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ booking_accepted: accepted }),
-    });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: (err as Error).message };
-  }
+  return updateBooking(id, { booking_accepted: accepted });
 }
 
 export async function updateBooking(id: string, data: Partial<BookingPayload>): Promise<BookingResult> {
   try {
-    const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
-    return { success: true, booking: json.booking };
+    const updateData = { ...data };
+    if (data.booking_date) {
+      updateData.booking_date = new Date(data.booking_date).toISOString();
+    }
+
+    const { data: updated, error } = await supabase
+      .from('Booking')
+      .update(updateData)
+      .eq('booking_id_db', id)
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, booking: updated };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
 }
 
-export async function searchBookings(query: string): Promise<{ bookings?: BookingPayload[], error?: string }> {
+export async function searchBookings(queryStr: string): Promise<{ bookings?: BookingPayload[], error?: string }> {
   try {
-    const res = await fetch(`/api/bookings?search=${encodeURIComponent(query)}`);
-    const json = await res.json();
-    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
-    return { bookings: json.bookings };
+    const { data, error } = await supabase
+      .from('Booking')
+      .select('*')
+      .eq('is_deleted', false)
+      .or(`first_name.ilike.%${queryStr}%,last_name.ilike.%${queryStr}%,e_mail.ilike.%${queryStr}%,phone_number.ilike.%${queryStr}%`)
+      .order('booking_date', { ascending: true });
+
+    if (error) return { error: error.message };
+    return { bookings: data || [] };
   } catch (err) {
     return { error: (err as Error).message };
   }
@@ -114,10 +122,14 @@ export async function searchBookings(query: string): Promise<{ bookings?: Bookin
 
 export async function fetchBin(): Promise<{ bookings?: BookingPayload[], error?: string }> {
   try {
-    const res = await fetch('/api/bookings/bin');
-    const json = await res.json();
-    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
-    return { bookings: json.bookings };
+    const { data, error } = await supabase
+      .from('Booking')
+      .select('*')
+      .eq('is_deleted', true)
+      .order('booking_date', { ascending: false });
+
+    if (error) return { error: error.message };
+    return { bookings: data || [] };
   } catch (err) {
     return { error: (err as Error).message };
   }
@@ -141,10 +153,13 @@ export interface PatientProfile {
 
 export async function fetchPatients(): Promise<{ patients?: PatientProfile[], error?: string }> {
   try {
-    const res = await fetch('/api/patients');
-    const json = await res.json();
-    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
-    return { patients: json.patients };
+    const { data, error } = await supabase
+      .from('PatientProfile')
+      .select('*')
+      .order('last_name', { ascending: true });
+
+    if (error) return { error: error.message };
+    return { patients: data || [] };
   } catch (err) {
     return { error: (err as Error).message };
   }
@@ -152,9 +167,12 @@ export async function fetchPatients(): Promise<{ patients?: PatientProfile[], er
 
 export async function deletePatient(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const res = await fetch(`/api/patients?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    const { error } = await supabase
+      .from('PatientProfile')
+      .delete()
+      .eq('id', id);
+
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };
@@ -163,10 +181,14 @@ export async function deletePatient(id: string): Promise<{ success: boolean; err
 
 export async function fetchPatientById(id: string): Promise<{ patient?: PatientProfile, error?: string }> {
   try {
-    const res = await fetch(`/api/patients?id=${encodeURIComponent(id)}`);
-    const json = await res.json();
-    if (!res.ok) return { error: json.error ?? `HTTP ${res.status}` };
-    return { patient: json.patient };
+    const { data, error } = await supabase
+      .from('PatientProfile')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) return { error: error.message };
+    return { patient: data };
   } catch (err) {
     return { error: (err as Error).message };
   }
@@ -174,14 +196,15 @@ export async function fetchPatientById(id: string): Promise<{ patient?: PatientP
 
 export async function updatePatient(id: string, data: Partial<PatientProfile>): Promise<{ success: boolean; patient?: PatientProfile; error?: string }> {
   try {
-    const res = await fetch(`/api/patients?id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
-    return { success: true, patient: json.patient };
+    const { data: updated, error } = await supabase
+      .from('PatientProfile')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, patient: updated };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
@@ -189,14 +212,14 @@ export async function updatePatient(id: string, data: Partial<PatientProfile>): 
 
 export async function createPatient(data: Partial<PatientProfile>): Promise<{ success: boolean; patient?: PatientProfile; error?: string }> {
   try {
-    const res = await fetch('/api/patients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) return { success: false, error: json.error ?? `HTTP ${res.status}` };
-    return { success: true, patient: json.patient };
+    const { data: created, error } = await supabase
+      .from('PatientProfile')
+      .insert([data])
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, patient: created };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
