@@ -34,6 +34,15 @@ export default function GlobalSearch({ isOpen, setIsOpen }: GlobalSearchProps) {
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, [query, performSearch]);
 
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const showDropdown = isOpen && query.trim().length > 0;
 
   const getInitials = (first: string, last: string) =>
@@ -61,13 +70,14 @@ export default function GlobalSearch({ isOpen, setIsOpen }: GlobalSearchProps) {
   return (
     <div className={`global-search-container ${isOpen ? 'active' : ''}`} ref={containerRef}>
       <div className={`search-input-wrapper ${isOpen ? 'active' : ''} ${query ? 'has-text' : ''}`}>
-        <i
-          className="ph ph-magnifying-glass search-icon"
-          onClick={() => {
-            setIsOpen(true);
-            inputRef.current?.focus();
-          }}
-        />
+        <button 
+          type="button"
+          className="search-trigger-btn"
+          onClick={() => setIsOpen(true)}
+          aria-label="Apri ricerca"
+        >
+          <i className="ph ph-magnifying-glass search-icon" />
+        </button>
         <input
           ref={inputRef}
           type="text"

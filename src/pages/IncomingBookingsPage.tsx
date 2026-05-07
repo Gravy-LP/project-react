@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useLongPress } from '../hooks/useLongPress';
 import { supabase } from '../lib/supabase';
-import { fetchBookings, deleteBooking, updateBooking, createBooking } from '../lib/api';
-import { getAvailableSlots } from '../lib/booking-utils';
+import { fetchBookings, deleteBooking, updateBooking } from '../lib/api';
 import { formatPhoneNumber } from '../lib/formatters';
+import BookingModal from '../components/BookingModal';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -36,74 +35,6 @@ export default function IncomingBookingsPage() {
   const navigate = useNavigate();
   const highlightId = searchParams.get('highlight');
   const [activeMenuBooking, setActiveMenuBooking] = useState<{id: string, x: number, y: number} | null>(null);
-  
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [isCalMinimized, setIsCalMinimized] = useState(false);
-
-  const fetchAvailableSlots = async (date: string) => {
-    setIsLoadingSlots(true);
-    const slots = await getAvailableSlots(date);
-    setAvailableSlots(slots);
-    setIsLoadingSlots(false);
-  };
-
-  const renderMiniCalendar = (date: string, onSelect: (ds: string) => void) => {
-    if (isCalMinimized && date) {
-      const [yy, mm, dd] = date.split('-');
-      return (
-        <div className="mini-calendar-summary" onClick={() => setIsCalMinimized(false)}>
-          <div className="summary-date">
-            <i className="ph ph-calendar" />
-            <span>{dd}/{mm}/{yy}</span>
-          </div>
-          <button type="button" className="btn btn-ghost btn-sm">Cambia</button>
-        </div>
-      );
-    }
-
-    const vd = new Date(date || new Date());
-    const vy = vd.getFullYear(), vm = vd.getMonth();
-    const vfd = new Date(vy, vm, 1).getDay();
-    const vdim = new Date(vy, vm + 1, 0).getDate();
-    const voff = vfd === 0 ? 6 : vfd - 1;
-    const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-    
-    const days = [];
-    for (let i = 0; i < voff; i++) days.push(<div key={`e-${i}`} className="mini-day empty"></div>);
-    
-    for (let d = 1; d <= vdim; d++) {
-      const ds = `${vy}-${String(vm + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayDate = new Date(vy, vm, d);
-      const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
-      const isSelected = date === ds;
-      
-      days.push(
-        <button
-          key={ds}
-          type="button"
-          className={`mini-day ${isWeekend ? 'weekend' : ''} ${isSelected ? 'active' : ''}`}
-          onClick={() => {
-            onSelect(ds);
-            setIsCalMinimized(true);
-          }}
-        >
-          {d}
-        </button>
-      );
-    }
-
-    return (
-      <div className="mini-calendar animate-in">
-        <div className="mini-calendar-header">{monthNames[vm]} {vy}</div>
-        <div className="mini-calendar-weekdays">
-          {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(w => <span key={w}>{w}</span>)}
-        </div>
-        <div className="mini-calendar-grid">{days}</div>
-      </div>
-    );
-  };
 
   const fetchBookingsData = useCallback(async () => {
     const { bookings, error } = await fetchBookings(false);
@@ -202,35 +133,6 @@ export default function IncomingBookingsPage() {
       fetchBookingsData();
     } else {
       showToast(res.error || "Errore durante l'aggiornamento", 'error');
-    }
-  };
-
-  const handleNewBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    const datePart = (formData.get('booking_date_part') as string);
-    const timePart = (formData.get('booking_time_part') as string);
-    const booking_date = `${datePart}T${timePart}:00`;
-    
-    const data = {
-      first_name: formData.get('first_name') as string,
-      last_name: (formData.get('last_name') as string) || null,
-      e_mail: (formData.get('e_mail') as string) || null,
-      phone_number: (formData.get('phone_number') as string) || null,
-      booking_date,
-      type: (formData.get('type') as string) || 'Visita',
-      booking_accepted: true,
-    };
-
-    const res = await createBooking(data);
-    if (res.success) {
-      showToast('Prenotazione creata con successo!', 'success');
-      setShowNewBookingModal(false);
-      fetchBookingsData();
-    } else {
-      showToast(res.error || 'Errore nella creazione', 'error');
     }
   };
 
@@ -398,90 +300,11 @@ export default function IncomingBookingsPage() {
         </div>
       </div>
 
-      {/* New Booking Modal */}
-      <Modal isOpen={showNewBookingModal} onClose={() => setShowNewBookingModal(false)}>
-        <div className="patient-form-header">
-          <h2>Nuova Prenotazione</h2>
-          <p>Inserisci i dettagli per creare una nuova prenotazione.</p>
-        </div>
-        <form className="patient-form" onSubmit={handleNewBookingSubmit}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Nome</label>
-              <input type="text" name="first_name" placeholder="es. Mario" required />
-            </div>
-            <div className="form-group">
-              <label>Cognome</label>
-              <input type="text" name="last_name" placeholder="es. Rossi" />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" name="e_mail" placeholder="mario@esempio.it" />
-            </div>
-            <div className="form-group">
-              <label>Telefono</label>
-              <input type="tel" name="phone_number" placeholder="+39 ..." />
-            </div>
-            <div className="form-group full-width">
-              <label>Data Prenotazione</label>
-              {renderMiniCalendar(selectedDate, (ds) => {
-                setSelectedDate(ds);
-                fetchAvailableSlots(ds);
-              })}
-              <input type="hidden" name="booking_date_part" value={selectedDate} required />
-            </div>
-            <div className="form-group full-width">
-              <label>Orario Disponibile</label>
-              {selectedDate ? (
-                isLoadingSlots ? (
-                  <div className="slot-hint">Caricamento...</div>
-                ) : availableSlots.length > 0 ? (
-                  <div className="slot-grid-compact">
-                    {availableSlots.map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        className={`slot-chip ${(formData.get('booking_time_part') === s) ? 'active' : ''}`}
-                        onClick={(e) => {
-                          const btn = e.currentTarget;
-                          const form = btn.closest('form');
-                          if (form) {
-                            const input = form.querySelector('input[name="booking_time_part"]') as HTMLInputElement;
-                            if (input) input.value = s;
-                            // Trigger re-render to show active chip
-                            const chips = form.querySelectorAll('.slot-chip');
-                            chips.forEach(c => c.classList.remove('active'));
-                            btn.classList.add('active');
-                          }
-                        }}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="slot-hint error">Nessun slot disponibile</div>
-                )
-              ) : (
-                <div className="slot-hint">Seleziona prima una data</div>
-              )}
-              <input type="hidden" name="booking_time_part" required />
-            </div>
-            <div className="form-group">
-              <label>Tipo di Visita</label>
-              <select name="type">
-                <option value="Visita">Visita</option>
-                <option value="Controllo">Controllo</option>
-                <option value="Urgenza">Urgenza</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowNewBookingModal(false)}>Annulla</button>
-            <button type="submit" className="btn btn-primary">Crea Prenotazione</button>
-          </div>
-        </form>
-      </Modal>
+      <BookingModal 
+        isOpen={showNewBookingModal} 
+        onClose={() => setShowNewBookingModal(false)}
+        onSuccess={fetchBookingsData}
+      />
 
       {/* Floating Touch Menu */}
       {activeMenuBooking && (

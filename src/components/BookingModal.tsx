@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { useToast } from '../context/ToastContext';
-import { createBooking } from '../lib/api';
+import { createBooking, searchBookings, type BookingPayload } from '../lib/api';
 import { getAvailableSlots } from '../lib/booking-utils';
 import '../styles/calendar.css';
 import '../styles/modal.css';
+import '../styles/search.css';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -33,12 +34,39 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
+  // Form State
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    type: '',
+    notes: ''
+  });
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<BookingPayload[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<number>();
+
   useEffect(() => {
     if (isOpen) {
       const d = initialDate || new Date().toISOString().split('T')[0];
       setDate(d);
       setTime(initialTime || '');
       updateSlots(d);
+      // Reset form on open
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        type: '',
+        notes: ''
+      });
+      setSearchQuery('');
+      setSearchResults([]);
     }
   }, [isOpen, initialDate, initialTime]);
 
@@ -49,19 +77,51 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     setIsLoadingSlots(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSearch = async (q: string) => {
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    const { bookings } = await searchBookings(q);
+    setSearchResults(bookings || []);
+    setIsSearching(false);
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 1) {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = window.setTimeout(() => handleSearch(searchQuery), 400);
+    } else {
+      setSearchResults([]);
+    }
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [searchQuery]);
+
+  const selectContact = (contact: BookingPayload) => {
+    setFormData({
+      ...formData,
+      firstName: contact.first_name || '',
+      lastName: contact.last_name || '',
+      email: contact.e_mail || '',
+      phone: contact.phone_number || ''
+    });
+    setSearchQuery('');
+    setSearchResults([]);
+    showToast(`Caricato profilo di ${contact.first_name}`, 'success');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const f = e.currentTarget;
-    const gv = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value?.trim() || '';
     
     const payload = {
-      first_name: gv('firstName'),
-      last_name: gv('lastName') || null,
-      e_mail: gv('email') || null,
-      phone_number: gv('phone') || null,
+      first_name: formData.firstName,
+      last_name: formData.lastName || null,
+      e_mail: formData.email || null,
+      phone_number: formData.phone || null,
       booking_date: `${date}T${time}:00`,
-      type: (f.elements.namedItem('type') as HTMLSelectElement)?.value || null,
-      notes: (f.elements.namedItem('notes') as HTMLTextAreaElement)?.value?.trim() || null,
+      type: formData.type || null,
+      notes: formData.notes || null,
       booking_accepted: true
     };
 
@@ -84,6 +144,9 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     }
   };
 
+  const getInitials = (first: string, last: string | null) =>
+    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="appt-form-header">
@@ -96,23 +159,74 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
         </div>
       </div>
 
+      <div className="modal-search-section">
+        <div className="search-input-wrapper active">
+          <i className="ph ph-magnifying-glass search-icon" />
+          <input 
+            className="search-input" 
+            style={{ opacity: 1, pointerEvents: 'auto' }}
+            placeholder="Cerca paziente esistente per auto-completare..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {isSearching && <div className="search-spinner active" style={{ position: 'absolute', right: '12px' }}><i className="ph ph-circle-notch" /></div>}
+        </div>
+        
+        {searchResults.length > 0 && (
+          <div className="modal-search-results glass-panel">
+            {searchResults.slice(0, 5).map(res => (
+              <div key={res.booking_id_db} className="search-item" onClick={() => selectContact(res)}>
+                <div className="search-item-avatar">{getInitials(res.first_name, res.last_name)}</div>
+                <div className="search-item-info">
+                  <div className="search-item-name">{res.first_name} {res.last_name}</div>
+                  <div className="search-item-contact">{res.phone_number || res.e_mail || 'Nessun recapito'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit}>
         <div className="appt-form-grid">
           <div className="appt-form-group">
             <label>Nome *</label>
-            <input name="firstName" placeholder="es. Mario" required />
+            <input 
+              name="firstName" 
+              placeholder="es. Mario" 
+              required 
+              value={formData.firstName}
+              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+            />
           </div>
           <div className="appt-form-group">
             <label>Cognome</label>
-            <input name="lastName" placeholder="es. Rossi" />
+            <input 
+              name="lastName" 
+              placeholder="es. Rossi" 
+              value={formData.lastName}
+              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+            />
           </div>
           <div className="appt-form-group">
             <label>Email</label>
-            <input name="email" type="email" placeholder="mario@esempio.it" />
+            <input 
+              name="email" 
+              type="email" 
+              placeholder="mario@esempio.it" 
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+            />
           </div>
           <div className="appt-form-group">
             <label>Telefono</label>
-            <input name="phone" type="tel" placeholder="+39 333 ..." />
+            <input 
+              name="phone" 
+              type="tel" 
+              placeholder="+39 333 ..." 
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+            />
           </div>
 
           <div className="appt-form-group span-2">
@@ -121,7 +235,6 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
               <div className="slot-hint">Caricamento orari...</div>
             ) : (
               <div className="slot-grid-compact">
-                {/* Ensure the initial time is shown as an option even if not in "available" list (e.g. if it's already booked but we want to show it as selected) */}
                 {time && !availableSlots.includes(time) && (
                   <button type="button" className="slot-chip active">{time}</button>
                 )}
@@ -141,14 +254,24 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
 
           <div className="appt-form-group span-2">
             <label>Tipo di Visita</label>
-            <select name="type">
+            <select 
+              name="type"
+              value={formData.type}
+              onChange={(e) => setFormData({...formData, type: e.target.value})}
+            >
               {serviceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
 
           <div className="appt-form-group span-2">
             <label>Note</label>
-            <textarea name="notes" rows={3} placeholder="Aggiungi dettagli extra..." />
+            <textarea 
+              name="notes" 
+              rows={3} 
+              placeholder="Aggiungi dettagli extra..." 
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            />
           </div>
         </div>
 
