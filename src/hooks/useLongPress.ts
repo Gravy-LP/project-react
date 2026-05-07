@@ -8,7 +8,7 @@ interface Options {
 
 export function useLongPress({ delay = 500, onLongPress, onClick }: Options = {}) {
   const [isLongPressActive, setIsLongPressActive] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressTriggered = useRef(false);
 
   const start = useCallback(
