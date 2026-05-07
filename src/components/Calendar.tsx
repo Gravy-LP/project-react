@@ -5,6 +5,8 @@ import Modal from '../components/Modal';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
+import { fetchBookings, createBooking, updateBooking, deleteBooking } from '../lib/api';
+import { formatPhoneNumber } from '../lib/formatters';
 import '../styles/calendar.css';
 import '../styles/modal.css';
 
@@ -61,9 +63,9 @@ export default function Calendar() {
 
   const fetchApts = useCallback(async () => {
     try {
-      const r = await fetch('/api/bookings');
-      const j = await r.json();
-      const b = (j.bookings || []).filter((x: any) => x.booking_accepted !== false);
+      const { bookings, error } = await fetchBookings(false);
+      if (error) throw new Error(error);
+      const b = (bookings || []).filter((x: any) => x.booking_accepted !== false);
       setApts(b.map((row: any, i: number) => {
         const dt = row.booking_date ? new Date(row.booking_date) : null;
         return {
@@ -123,11 +125,17 @@ export default function Calendar() {
     const nt = (f.elements.namedItem('notes') as HTMLTextAreaElement)?.value?.trim() || null;
     if (!fn || !d || !ti) return;
     try {
-      const r = await fetch('/api/bookings', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ first_name: fn, last_name: ln, e_mail: em, phone_number: ph, booking_date: `${d}T${ti}:00`, type: tp, notes: nt, booking_accepted: true })
+      const res = await createBooking({ 
+        first_name: fn, 
+        last_name: ln, 
+        e_mail: em, 
+        phone_number: ph, 
+        booking_date: `${d}T${ti}:00`, 
+        type: tp, 
+        notes: nt, 
+        booking_accepted: true 
       });
-      if (!r.ok) { const j = await r.json(); showToast(j.error ?? 'Errore', 'error'); return; }
+      if (!res.success) { showToast(res.error ?? 'Errore', 'error'); return; }
       showToast(`Appuntamento salvato!`, 'success'); setShowNew(false); fetchApts();
     } catch { showToast('Errore di rete', 'error'); }
   };
@@ -146,11 +154,18 @@ export default function Calendar() {
     const ac = (f.elements.namedItem('eCo') as HTMLInputElement)?.checked;
     if (!fn || !d || !ti) return;
     try {
-      const r = await fetch(`/api/bookings?id=${encodeURIComponent(selApt.booking_id_db)}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ first_name: fn, last_name: ln, e_mail: em, phone_number: ph, booking_date: `${d}T${ti}:00`, type: tp, booking_accepted: ba, appointment_complete: ac, notes: nt })
+      const res = await updateBooking(selApt.booking_id_db, { 
+        first_name: fn, 
+        last_name: ln, 
+        e_mail: em, 
+        phone_number: ph, 
+        booking_date: `${d}T${ti}:00`, 
+        type: tp, 
+        booking_accepted: ba, 
+        appointment_complete: ac, 
+        notes: nt 
       });
-      if (!r.ok) { const j = await r.json(); showToast(j.error ?? 'Errore', 'error'); return; }
+      if (!res.success) { showToast(res.error ?? 'Errore', 'error'); return; }
       showToast('Aggiornato!', 'success'); setShowDet(false); setEditing(false); fetchApts();
     } catch { showToast('Errore di rete', 'error'); }
   };
@@ -165,8 +180,8 @@ export default function Calendar() {
     const ok = await confirm({ title: 'Elimina?', message: `Eliminare l'appuntamento di ${a.patient}?` });
     if (!ok) return;
     try {
-      const r = await fetch(`/api/bookings?id=${encodeURIComponent(a.booking_id_db)}`, { method: 'DELETE' });
-      if (!r.ok) { showToast('Errore', 'error'); return; }
+      const res = await deleteBooking(a.booking_id_db);
+      if (!res.success) { showToast(res.error || 'Errore', 'error'); return; }
       if (window.navigator.vibrate) window.navigator.vibrate(50);
       showToast('Eliminato!', 'success'); setShowDet(false); fetchApts();
     } catch { showToast('Errore di rete', 'error'); }
@@ -191,9 +206,9 @@ export default function Calendar() {
       <div className="calendar-header glass-panel">
         <div className="current-month">{monthNames[m]} {y}</div>
         <div className="calendar-actions">
-          <button className="cal-nav-btn" onClick={() => changeMonth(-1)}><i className="ph ph-caret-left" /></button>
-          <button className="today-btn" onClick={() => { setSlideDir(''); setCurDate(new Date()); }}>Oggi</button>
-          <button className="cal-nav-btn" onClick={() => changeMonth(1)}><i className="ph ph-caret-right" /></button>
+          <button className="btn btn-ghost btn-icon" onClick={() => changeMonth(-1)}><i className="ph ph-caret-left" /></button>
+          <button className="btn btn-secondary btn-sm" onClick={() => { setSlideDir(''); setCurDate(new Date()); }}>Oggi</button>
+          <button className="btn btn-ghost btn-icon" onClick={() => changeMonth(1)}><i className="ph ph-caret-right" /></button>
         </div>
       </div>
 
@@ -261,7 +276,7 @@ export default function Calendar() {
               <div className="info-item"><i className="ph ph-clock" /><span>{selApt.time}</span></div>
               <div className="info-item"><i className="ph ph-tag" /><span className={`status-pill ${selApt.status.toLowerCase()}`}>{selApt.status}</span></div>
               <div className="info-item"><i className="ph ph-envelope" /><span>{selApt.e_mail || '—'}</span></div>
-              <div className="info-item"><i className="ph ph-phone" /><span>{selApt.phone_number || '—'}</span></div>
+              <div className="info-item"><i className="ph ph-phone" /><span>{formatPhoneNumber(selApt.phone_number)}</span></div>
               <div className="info-item"><i className="ph ph-stethoscope" /><span>{selApt.type || '—'}</span></div>
             </div>
             {selApt.notes && <div className="modal-notes"><div className="notes-label"><i className="ph ph-note" /> Note</div><p>{selApt.notes}</p></div>}

@@ -6,11 +6,5 @@ export default defineConfig({
   server: {
     port: 5173,
     allowedHosts: ['devserver-main--transcendent-starship-134524.netlify.app'],
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
   },
 });

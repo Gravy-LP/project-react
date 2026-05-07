@@ -52,6 +52,13 @@ export default function GlobalSearch() {
     setShowDropdown(false);
     setIsActive(false);
     setQuery('');
+    
+    // If it's a virtual booking pointing to a profile
+    if (b.booking_id_db?.startsWith('p-') && b.profile_id) {
+      navigate(`/profile/${b.profile_id}`);
+      return;
+    }
+
     if (b.booking_accepted === null) {
       navigate(`/incoming-bookings?highlight=${b.booking_id_db}`);
     } else if (b.booking_accepted === true) {
@@ -62,7 +69,7 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div className="global-search-container" ref={containerRef}>
+    <div className={`global-search-container ${isActive ? 'active' : ''}`} ref={containerRef}>
       <div className={`search-input-wrapper ${isActive ? 'active' : ''} ${query ? 'has-text' : ''}`}>
         <i
           className="ph ph-magnifying-glass search-icon"
@@ -120,7 +127,12 @@ export default function GlobalSearch() {
               : 'N/A';
 
             let statusHtml: React.ReactNode;
-            if (b.booking_accepted === null) {
+            let dateDisplay = dateStr;
+
+            if (b.booking_id_db?.startsWith('p-')) {
+              statusHtml = <span className="search-item-status status-profile">Paziente</span>;
+              dateDisplay = 'Profilo';
+            } else if (b.booking_accepted === null) {
               statusHtml = <span className="search-item-status status-pending">In Attesa</span>;
             } else if (b.booking_accepted === true) {
               statusHtml = <span className="search-item-status status-accepted">Accettata</span>;
@@ -143,7 +155,7 @@ export default function GlobalSearch() {
                 </div>
                 <div className="search-item-meta">
                   {statusHtml}
-                  <div>{dateStr}</div>
+                  <div className="search-item-date">{dateDisplay}</div>
                 </div>
               </div>
             );

@@ -7,6 +7,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useLongPress } from '../hooks/useLongPress';
 import { supabase } from '../lib/supabase';
 import { fetchBookings, deleteBooking, updateBooking, createBooking } from '../lib/api';
+import { formatPhoneNumber } from '../lib/formatters';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -77,11 +78,14 @@ export default function IncomingBookingsPage() {
   }, [highlightId, allBookings]);
 
   const filteredBookings = allBookings.filter((b) => {
-    const search = searchQuery.toLowerCase().trim();
-    if (!search) return true;
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
     const name = `${b.first_name} ${b.last_name || ''}`.toLowerCase();
-    const contact = `${b.e_mail || ''} ${b.phone_number || ''}`.toLowerCase();
-    return name.includes(search) || contact.includes(search);
+    const email = (b.e_mail || '').toLowerCase();
+    const phone = (b.phone_number || '').replace(/\s+/g, '');
+    const cleanQuery = q.replace(/\s+/g, '');
+
+    return name.includes(q) || email.includes(q) || phone.includes(cleanQuery);
   });
 
   const pendingBookings = filteredBookings.filter((b) => b.booking_accepted === null);
@@ -195,7 +199,7 @@ export default function IncomingBookingsPage() {
           <td>
             <div className="contact-info">
               <div className="email">{booking.e_mail}</div>
-              <div className="phone">{booking.phone_number}</div>
+              <div className="phone">{formatPhoneNumber(booking.phone_number)}</div>
             </div>
           </td>
         )}

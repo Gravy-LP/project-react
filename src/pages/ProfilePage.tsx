@@ -4,7 +4,8 @@ import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
-import { fetchPatientById, updatePatient, fetchBookings, updateBooking, deleteBooking, createBooking, type PatientProfile, type BookingPayload } from '../lib/api';
+import { fetchPatientById, updatePatient, fetchBookings, updateBooking, deleteBooking, createBooking, deletePatient, type PatientProfile, type BookingPayload } from '../lib/api';
+import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
 import '../styles/profile.css';
 import '../styles/calendar.css';
@@ -166,6 +167,23 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeletePatient = async () => {
+    if (!id) return;
+    const confirmed = await confirm({
+      title: 'Eliminare questo profilo paziente?',
+      message: "L'azione non può essere annullata.",
+    });
+    if (!confirmed) return;
+
+    const { success, error } = await deletePatient(id);
+    if (!success) {
+      showToast(error || "Errore durante l'eliminazione", 'error');
+      return;
+    }
+    showToast('Profilo eliminato', 'success');
+    navigate('/rubrica');
+  };
+
   // Mini Calendar Logic
   const y = curDate.getFullYear(), m = curDate.getMonth();
   const dim = new Date(y, m + 1, 0).getDate();
@@ -195,7 +213,7 @@ export default function ProfilePage() {
         <div className="error-container">
           <i className="ph ph-warning-circle" />
           <h3>Profilo non trovato</h3>
-          <button className="btn-secondary" onClick={() => navigate('/rubrica')}>Torna alla rubrica</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/rubrica')}>Torna alla rubrica</button>
         </div>
       </Layout>
     );
@@ -203,7 +221,7 @@ export default function ProfilePage() {
 
   return (
     <Layout headerActions={
-      <button className="back-btn" onClick={() => navigate('/rubrica')}>
+      <button className="btn btn-ghost" onClick={() => navigate('/rubrica')}>
         <i className="ph ph-arrow-left" />
         Torna alla Rubrica
       </button>
@@ -224,12 +242,15 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="profile-header-actions">
-            <button className="btn-secondary" onClick={handleShare}>
+            <button className="btn btn-secondary" onClick={handleShare}>
               <i className="ph ph-share-network" /> Condividi
             </button>
-            <button className="btn-primary" onClick={handleSaveNote} disabled={saving}>
+            <button className="btn btn-primary" onClick={handleSaveNote} disabled={saving}>
               {saving ? <i className="ph ph-circle-notch animate-spin" /> : <i className="ph ph-floppy-disk" />}
               {saving ? 'Salvataggio...' : 'Salva Note'}
+            </button>
+            <button className="btn btn-danger" onClick={handleDeletePatient}>
+              <i className="ph ph-trash" /> Elimina Paziente
             </button>
           </div>
         </div>
@@ -301,8 +322,8 @@ export default function ProfilePage() {
                           </td>
                           <td>
                             <div className="row-actions">
-                              <button onClick={() => { setSelectedBooking(b); setShowBookingModal(true); }} className="btn-icon"><i className="ph ph-pencil" /></button>
-                              <button onClick={() => handleDeleteBooking(b.booking_id_db)} className="btn-icon text-danger"><i className="ph ph-trash" /></button>
+                              <button onClick={() => { setSelectedBooking(b); setShowBookingModal(true); }} className="btn btn-ghost btn-icon"><i className="ph ph-pencil" /></button>
+                              <button onClick={() => handleDeleteBooking(b.booking_id_db)} className="btn btn-ghost btn-icon text-danger"><i className="ph ph-trash" /></button>
                             </div>
                           </td>
                         </tr>
@@ -346,7 +367,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="c-item">
                   <i className="ph ph-phone" />
-                  <div><label>Telefono</label><span>{patient.phone_number || 'N/A'}</span></div>
+                  <div><label>Telefono</label><span>{formatPhoneNumber(patient.phone_number)}</span></div>
                 </div>
               </div>
             </div>

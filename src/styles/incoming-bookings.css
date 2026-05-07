@@ -2,12 +2,6 @@
 .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .filters { display: flex; gap: 12px; }
-.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
-.btn-icon { padding: 8px; border-radius: var(--radius-sm); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
-.btn-success { background: rgba(34, 197, 94, 0.1); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.2); }
-.btn-success:hover { background: rgba(34, 197, 94, 0.2); }
-.btn-danger { background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2); }
-.btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
 .text-danger:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 .booking-table-wrapper { overflow-x: auto; }
 .booking-table { width: 100%; border-collapse: collapse; text-align: left; }

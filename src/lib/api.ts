@@ -106,15 +106,46 @@ export async function updateBooking(id: string, data: Partial<BookingPayload>): 
 
 export async function searchBookings(queryStr: string): Promise<{ bookings?: BookingPayload[], error?: string }> {
   try {
-    const { data, error } = await supabase
+    // Search in Bookings
+    const { data: bookingsData, error: bookingsError } = await supabase
       .from('Booking')
       .select('*')
       .eq('is_deleted', false)
       .or(`first_name.ilike.%${queryStr}%,last_name.ilike.%${queryStr}%,e_mail.ilike.%${queryStr}%,phone_number.ilike.%${queryStr}%`)
       .order('booking_date', { ascending: true });
 
-    if (error) return { error: error.message };
-    return { bookings: data || [] };
+    if (bookingsError) return { error: bookingsError.message };
+
+    // Search in Patients to find those without bookings
+    const { data: patientsData, error: patientsError } = await supabase
+      .from('PatientProfile')
+      .select('*')
+      .or(`first_name.ilike.%${queryStr}%,last_name.ilike.%${queryStr}%,e_mail.ilike.%${queryStr}%,phone_number.ilike.%${queryStr}%`)
+      .limit(10);
+
+    if (patientsError) return { error: patientsError.message };
+
+    // Merge: For each patient, if they don't have a booking in bookingsData, add a dummy booking entry pointing to their profile
+    const mergedResults: BookingPayload[] = [...(bookingsData || [])];
+    
+    const existingPatientIds = new Set(mergedResults.map(b => b.profile_id).filter(Boolean));
+
+    patientsData?.forEach(p => {
+      if (!existingPatientIds.has(p.id)) {
+        mergedResults.push({
+          booking_id_db: `p-${p.id}`, // Virtual ID
+          first_name: p.first_name,
+          last_name: p.last_name,
+          e_mail: p.e_mail,
+          phone_number: p.phone_number,
+          profile_id: p.id,
+          booking_accepted: true, // Mark as "accepted" so it shows a neutral/good status
+          type: 'Profilo'
+        });
+      }
+    });
+
+    return { bookings: mergedResults };
   } catch (err) {
     return { error: (err as Error).message };
   }

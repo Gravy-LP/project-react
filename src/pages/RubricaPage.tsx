@@ -3,8 +3,9 @@ import Layout from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { fetchPatients, deletePatient, createPatient, createBooking, type PatientProfile } from '../lib/api';
+import { fetchPatients, createPatient, createBooking, type PatientProfile } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
 import { useLongPress } from '../hooks/useLongPress';
 import '../styles/rubrica.css';
@@ -15,11 +16,10 @@ interface PatientCardProps {
   patient: PatientProfile;
   active: boolean;
   onActivateMenu: (info: { id: string; x: number; y: number }) => void;
-  onDelete: (id: string) => void;
   onNavigate: (path: string) => void;
 }
 
-function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: PatientCardProps) {
+function PatientCard({ patient, active, onActivateMenu, onNavigate }: PatientCardProps) {
   const longPressProps = useLongPress({
     onLongPress: (e) => {
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -38,7 +38,8 @@ function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: 
     <div
       className={`patient-card glass-panel ${active ? 'row-active' : ''}`}
       {...longPressProps}
-      style={{ cursor: 'default' }}
+      onClick={() => onNavigate(`/profile/${patient.id}`)}
+      style={{ cursor: 'pointer' }}
     >
       <div className="patient-card-body">
         <div className="patient-card-header">
@@ -58,30 +59,6 @@ function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: 
               </div>
             )}
           </div>
-          <div className="patient-card-top-actions">
-            <button
-              className="btn btn-sm btn-secondary"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigate(`/profile/${patient.id}`);
-              }}
-            >
-              <i className="ph ph-arrow-right" />
-              Visualizza
-            </button>
-            <button
-              className="delete-patient-btn hide-mobile"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(patient.id);
-              }}
-              title="Elimina profilo"
-            >
-              <i className="ph ph-trash" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -96,7 +73,7 @@ function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: 
           {patient.phone_number ? (
             <a href={`tel:${patient.phone_number}`} className="contact-chip phone-chip">
               <i className="ph ph-phone" />
-              <span>{patient.phone_number}</span>
+              <span>{formatPhoneNumber(patient.phone_number)}</span>
             </a>
           ) : null}
           {!patient.e_mail && !patient.phone_number ? (
@@ -107,6 +84,7 @@ function PatientCard({ patient, active, onActivateMenu, onDelete, onNavigate }: 
           ) : null}
         </div>
       </div>
+      <i className="patient-card-arrow ph ph-arrow-right" />
     </div>
   );
 }
@@ -154,22 +132,6 @@ export default function RubricaPage() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirmed = await confirm({
-      title: 'Eliminare questo profilo paziente?',
-      message: "L'azione non può essere annullata.",
-    });
-    if (!confirmed) return;
-
-    const { success, error } = await deletePatient(id);
-    if (!success) {
-      showToast(error || "Errore durante l'eliminazione", 'error');
-      return;
-    }
-    setPatients((prev) => prev.filter((p) => p.id !== id));
-    showToast('Profilo eliminato', 'success');
   };
 
   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -238,10 +200,13 @@ export default function RubricaPage() {
 
   const filteredPatients = patients.filter((p) => {
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     const name = `${p.first_name} ${p.last_name || ''}`.toLowerCase();
-    const contacts = `${p.e_mail || ''} ${p.phone_number || ''}`.toLowerCase();
-    return name.includes(q) || contacts.includes(q);
+    const email = (p.e_mail || '').toLowerCase();
+    const phone = (p.phone_number || '').replace(/\s+/g, '');
+    const cleanQuery = q.replace(/\s+/g, '');
+
+    return name.includes(q) || email.includes(q) || phone.includes(cleanQuery);
   });
 
   return (
@@ -283,7 +248,6 @@ export default function RubricaPage() {
                 patient={patient}
                 active={activeMenuPatient?.id === patient.id}
                 onActivateMenu={setActiveMenuPatient}
-                onDelete={handleDelete}
                 onNavigate={navigate}
               />
             ))}
@@ -384,10 +348,6 @@ export default function RubricaPage() {
             <div className="touch-menu-header">Opzioni Paziente</div>
             <button className="touch-menu-item" onClick={() => { navigate(`/profile/${activeMenuPatient.id}`); setActiveMenuPatient(null); }}>
               <i className="ph ph-user" /> Vedi Profilo
-            </button>
-            <div className="touch-menu-divider"></div>
-            <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuPatient.id); setActiveMenuPatient(null); }}>
-              <i className="ph ph-trash" /> Elimina Profilo
             </button>
           </div>
         </div>

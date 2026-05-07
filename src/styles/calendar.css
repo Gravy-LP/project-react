@@ -25,24 +25,6 @@
   gap: 12px;
 }
 
-.cal-nav-btn,
-.today-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.cal-nav-btn:hover,
-.today-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--color-border-highlight);
-}
-
 .cal-nav-btn i {
   font-size: 1.25rem;
 }

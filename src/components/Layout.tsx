@@ -72,12 +72,14 @@ export default function Layout({ children, headerActions }: LayoutProps) {
       <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
       <main className="main-content">
         <header className="top-header">
-          <button className="mobile-menu-toggle" id="mobileMenuBtn" onClick={() => setIsMobileMenuOpen(true)}>
-            <i className="ph ph-list" />
-          </button>
-          <GlobalSearch />
-          <div className="user-profile">
+          <div className="header-left">
+            <button className="mobile-menu-toggle" id="mobileMenuBtn" onClick={() => setIsMobileMenuOpen(true)}>
+              <i className="ph ph-list" />
+            </button>
             {headerActions}
+          </div>
+          <div className="header-right">
+            <GlobalSearch />
             <NotificationBell />
             
             <div className="account-menu-container" ref={accountMenuRef}>

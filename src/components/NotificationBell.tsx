@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
+import { fetchBookings, updateBooking, deleteBooking } from '../lib/api';
 import '../styles/notifications.css';
 
 interface Booking {
@@ -23,12 +24,9 @@ export default function NotificationBell() {
   // Fetch pending bookings
   useEffect(() => {
     async function fetchNotifications() {
-      try {
-        const res = await fetch('/api/bookings?incoming=true');
-        const json = await res.json();
-        setNotifications(json.bookings || []);
-      } catch {
-        // Silently fail
+      const { bookings, error } = await fetchBookings(true);
+      if (!error) {
+        setNotifications((bookings as Booking[]) || []);
       }
     }
     fetchNotifications();
@@ -82,22 +80,16 @@ export default function NotificationBell() {
     try {
       if (action === 'accept' || action === 'refuse') {
         const accepted = action === 'accept';
-        const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ booking_accepted: accepted }),
-        });
-        if (!res.ok) {
-          const json = await res.json();
-          showToast(json.error || 'Errore', 'error');
+        const res = await updateBooking(id, { booking_accepted: accepted });
+        if (!res.success) {
+          showToast(res.error || 'Errore', 'error');
           return;
         }
         showToast(accepted ? 'Prenotazione accettata!' : 'Prenotazione rifiutata!', 'success');
       } else if (action === 'delete') {
-        const res = await fetch(`/api/bookings?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!res.ok) {
-          const json = await res.json();
-          showToast(json.error || 'Errore', 'error');
+        const res = await deleteBooking(id);
+        if (!res.success) {
+          showToast(res.error || 'Errore', 'error');
           return;
         }
         showToast('Prenotazione eliminata!', 'success');
