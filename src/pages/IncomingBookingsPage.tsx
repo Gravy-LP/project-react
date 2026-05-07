@@ -317,7 +317,7 @@ export default function IncomingBookingsPage() {
               </thead>
               <tbody>
                 {acceptedBookings.length > 0 ? (
-                  acceptedBookings.map((b) => renderBookingRow(b, false))
+                  acceptedBookings.map((b) => <BookingRow booking={b} showFullActions={false} key={b.booking_id_db} />)
                 ) : (
                   <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>Nessuna prenotazione accettata</td></tr>
                 )}
@@ -335,7 +335,7 @@ export default function IncomingBookingsPage() {
               </thead>
               <tbody>
                 {refusedBookings.length > 0 ? (
-                  refusedBookings.map((b) => renderBookingRow(b, false))
+                  refusedBookings.map((b) => <BookingRow booking={b} showFullActions={false} key={b.booking_id_db} />)
                 ) : (
                   <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '32px' }}>Nessuna prenotazione rifiutata</td></tr>
                 )}
