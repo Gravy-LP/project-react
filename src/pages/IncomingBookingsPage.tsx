@@ -6,8 +6,9 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useLongPress } from '../hooks/useLongPress';
 import { supabase } from '../lib/supabase';
 import { fetchBookings, deleteBooking, updateBooking } from '../lib/api';
-import { formatPhoneNumber } from '../lib/formatters';
+import { formatPhoneNumber, getInitials } from '../lib/formatters';
 import BookingModal from '../components/BookingModal';
+import { useTranslation } from '../context/LanguageContext';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -28,6 +29,7 @@ interface Booking {
 export default function IncomingBookingsPage() {
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation();
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -92,8 +94,6 @@ export default function IncomingBookingsPage() {
   const acceptedBookings = filteredBookings.filter((b) => b.booking_accepted === true);
   const refusedBookings = filteredBookings.filter((b) => b.booking_accepted === false);
 
-  const getInitials = (name: string) =>
-    name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'N/A';
@@ -123,16 +123,31 @@ export default function IncomingBookingsPage() {
   };
 
   const handleUpdateStatus = async (id: string, status: boolean | null) => {
-    const res = await updateBooking(id, { booking_accepted: status });
-    if (res.success) {
+    try {
+      // 1. Update the booking status
+      const res = await updateBooking(id, { booking_accepted: status });
+      if (!res.success) {
+        showToast(res.error || t('common.error'), 'error');
+        return;
+      }
+
+      // 2. If accepted, ensure a PatientProfile exists
+      if (status === true) {
+        const booking = allBookings.find(b => b.booking_id_db === id);
+        if (booking) {
+          const { ensurePatientProfileForBooking } = await import('../lib/api');
+          await ensurePatientProfileForBooking(booking);
+        }
+      }
+
       if (window.navigator.vibrate) window.navigator.vibrate(30);
       showToast(
         `Prenotazione ${status === null ? 'ripristinata' : status ? 'accettata' : 'rifiutata'} con successo!`,
         'success'
       );
       fetchBookingsData();
-    } else {
-      showToast(res.error || "Errore durante l'aggiornamento", 'error');
+    } catch (err) {
+      showToast(t('common.error'), 'error');
     }
   };
 
@@ -193,17 +208,22 @@ export default function IncomingBookingsPage() {
         </td>
         <td className="hide-mobile">
           <div className="table-actions">
-            {showFullActions && (
-              <>
-                <button className="btn btn-success btn-icon" title="Accetta" onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
-                  <i className="ph ph-check" />
-                </button>
-                <button className="btn btn-danger btn-icon" title="Rifiuta" onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
-                  <i className="ph ph-x" />
-                </button>
-              </>
+            {booking.booking_accepted !== true && (
+              <button className="btn btn-success btn-icon" title={t('incoming.status_accepted').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
+                <i className="ph ph-check" />
+              </button>
             )}
-            <button className="btn btn-ghost btn-icon text-danger" title="Elimina" onClick={() => handleDelete(booking.booking_id_db)}>
+            {booking.booking_accepted !== false && (
+              <button className="btn btn-danger btn-icon" title={t('incoming.status_rejected').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
+                <i className="ph ph-x" />
+              </button>
+            )}
+            {booking.booking_accepted !== null && (
+              <button className="btn btn-ghost btn-icon" title={t('calendar.status_pending')} onClick={() => handleUpdateStatus(booking.booking_id_db, null)}>
+                <i className="ph ph-clock-counter-clockwise" />
+              </button>
+            )}
+            <button className="btn btn-ghost btn-icon text-danger" title={t('common.delete')} onClick={() => handleDelete(booking.booking_id_db)}>
               <i className="ph ph-trash" />
             </button>
           </div>
@@ -318,12 +338,29 @@ export default function IncomingBookingsPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="touch-menu-header">Azioni rapida</div>
-            <button className="touch-menu-item" onClick={() => { handleUpdateStatus(activeMenuBooking.id, true); setActiveMenuBooking(null); }}>
-              <i className="ph ph-check-circle" /> Accetta
-            </button>
-            <button className="touch-menu-item" onClick={() => { handleUpdateStatus(activeMenuBooking.id, false); setActiveMenuBooking(null); }}>
-              <i className="ph ph-x-circle" /> Rifiuta
-            </button>
+            {(() => {
+              const b = allBookings.find(x => x.booking_id_db === activeMenuBooking.id);
+              if (!b) return null;
+              return (
+                <>
+                  {b.booking_accepted !== true && (
+                    <button className="touch-menu-item" onClick={() => { handleUpdateStatus(b.booking_id_db, true); setActiveMenuBooking(null); }}>
+                      <i className="ph ph-check-circle" /> {t('incoming.status_accepted').split(' ')[0]}
+                    </button>
+                  )}
+                  {b.booking_accepted !== false && (
+                    <button className="touch-menu-item" onClick={() => { handleUpdateStatus(b.booking_id_db, false); setActiveMenuBooking(null); }}>
+                      <i className="ph ph-x-circle" /> {t('incoming.status_rejected').split(' ')[0]}
+                    </button>
+                  )}
+                  {b.booking_accepted !== null && (
+                    <button className="touch-menu-item" onClick={() => { handleUpdateStatus(b.booking_id_db, null); setActiveMenuBooking(null); }}>
+                      <i className="ph ph-clock-counter-clockwise" /> {t('calendar.status_pending')}
+                    </button>
+                  )}
+                </>
+              );
+            })()}
             <div className="touch-menu-divider"></div>
             <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuBooking.id); setActiveMenuBooking(null); }}>
               <i className="ph ph-trash" /> Elimina

@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import BookingModal from '../components/BookingModal';
 import { supabase } from '../lib/supabase';
 import { generateAllSlots } from '../lib/booking-utils';
+import { getInitials } from '../lib/formatters';
 import { useTranslation } from '../context/LanguageContext';
 import '../styles/dashboard.css';
 import '../styles/timeline.css';
@@ -31,11 +32,13 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     const today = new Date();
-    const ds = today.toISOString().split('T')[0];
+    const ds = today.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+
     
     const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tsTomorrow = tomorrow.toISOString().split('T')[0];
+    tomorrow.setDate(today.getDate() + 1);
+    const tsTomorrow = tomorrow.toLocaleDateString('en-CA');
+
 
     const { data: dataToday } = await supabase
       .from('Booking')
@@ -83,14 +86,12 @@ export default function DashboardPage() {
 
   const openBookingModal = (time: string) => {
     setSelectedSlot({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toLocaleDateString('en-CA'),
       time: time
     });
     setIsBookingOpen(true);
   };
 
-  const getInitials = (first: string, last: string | null) =>
-    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   const getLocaleTag = (lang: string) => {
     switch(lang) {
@@ -126,7 +127,7 @@ export default function DashboardPage() {
                     <div className="slot-time">{item.time}</div>
                     {item.booking ? (
                       <div className="slot-content">
-                        <div className="slot-avatar">{getInitials(item.booking.first_name, item.booking.last_name)}</div>
+                        <div className="slot-avatar">{getInitials(`${item.booking.first_name} ${item.booking.last_name || ''}`)}</div>
                         <div className="slot-info">
                           <span className="slot-name">{item.booking.first_name} {item.booking.last_name?.[0]}.</span>
                           <span className="slot-type">{item.booking.type || t('booking.services.odontoiatria')}</span>

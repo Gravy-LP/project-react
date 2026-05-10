@@ -117,7 +117,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (showNewBookingModal) {
-      setBDate(new Date().toISOString().split('T')[0]);
+      setBDate(new Date().toLocaleDateString('en-CA'));
       setBTime('');
       setBType('');
       setBStatus('null');
@@ -442,22 +442,23 @@ export default function ProfilePage() {
                   type={bType} setType={setBType}
                   notes={bNotes} setNotes={setBNotes}
                   ignoreBookingId={selectedBooking.booking_id_db}
-                />
-                <div className="appt-form-group span-2">
-                  <label>{t('calendar.status')}</label>
-                  <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
-                    <option value="null">{t('calendar.status_pending')}</option>
-                    <option value="true">{t('calendar.status_accepted')}</option>
-                    <option value="false">{t('calendar.status_rejected')}</option>
-                  </select>
-                </div>
-                <div className="appt-form-group span-2">
-                  <label className="toggle-switch">
-                    <input type="checkbox" checked={bComplete} onChange={(e) => setBComplete(e.target.checked)} />
-                    <span className="slider"></span>
-                    <span className="toggle-label">{t('calendar.visit_completed')}</span>
-                  </label>
-                </div>
+                >
+                  <div className="appt-form-group span-2">
+                    <label>{t('calendar.status')}</label>
+                    <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
+                      <option value="null">{t('calendar.status_pending')}</option>
+                      <option value="true">{t('calendar.status_accepted')}</option>
+                      <option value="false">{t('calendar.status_rejected')}</option>
+                    </select>
+                  </div>
+                  <div className="appt-form-group span-2">
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={bComplete} onChange={(e) => setBComplete(e.target.checked)} />
+                      <span className="slider"></span>
+                      <span className="toggle-label">{t('calendar.visit_completed')}</span>
+                    </label>
+                  </div>
+                </BookingFields>
               </div>
               <div className="appt-form-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowBookingModal(false)}>{t('common.cancel')}</button>
@@ -484,15 +485,16 @@ export default function ProfilePage() {
                 time={bTime} setTime={setBTime}
                 type={bType} setType={setBType}
                 notes={bNotes} setNotes={setBNotes}
-              />
-              <div className="appt-form-group span-2">
-                <label>{t('calendar.status')}</label>
-                <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
-                  <option value="null">{t('calendar.status_pending')}</option>
-                  <option value="true">{t('calendar.status_accepted')}</option>
-                  <option value="false">{t('calendar.status_rejected')}</option>
-                </select>
-              </div>
+              >
+                <div className="appt-form-group span-2">
+                  <label>{t('calendar.status')}</label>
+                  <select value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
+                    <option value="null">{t('calendar.status_pending')}</option>
+                    <option value="true">{t('calendar.status_accepted')}</option>
+                    <option value="false">{t('calendar.status_rejected')}</option>
+                  </select>
+                </div>
+              </BookingFields>
             </div>
             <div className="appt-form-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setShowNewBookingModal(false)}>{t('common.cancel')}</button>

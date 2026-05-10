@@ -1,4 +1,37 @@
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { supabase } from '../lib/supabase';
+import { fetchBookings, updateBooking, deleteBooking, ensurePatientProfileForBooking } from '../lib/api';
+import { getAvailableSlots } from '../lib/booking-utils';
+import { formatPhoneNumber, getInitials } from '../lib/formatters';
+import { useSwipe } from '../hooks/useSwipe';
+import Modal from './Modal';
+import BookingFields from './BookingFields';
+import BookingModal from './BookingModal';
+import '../styles/calendar.css';
+import '../styles/modal.css';
+
+interface Appointment {
+  id: number;
+  booking_id_db: string | null;
+  patient: string;
+  first_name: string;
+  last_name: string;
+  e_mail: string;
+  phone_number: string;
+  date: string;
+  time: string;
+  service: string;
+  status: string;
+  type: string | null;
+  notes: string | null;
+  booking_accepted: boolean | null;
+  appointment_complete: boolean;
+  profile_id: string | null;
+}
 
 export default function Calendar() {
   const navigate = useNavigate();
@@ -117,65 +150,6 @@ export default function Calendar() {
     setIsLoadingSlots(false);
   };
 
-  const renderMiniCalendar = (selectedDate: string, onSelect: (ds: string) => void) => {
-    const vd = new Date(selectedDate || todayStr);
-    const vy = vd.getFullYear(), vm = vd.getMonth();
-    const vfd = new Date(vy, vm, 1).getDay();
-    const vdim = new Date(vy, vm + 1, 0).getDate();
-    const voff = vfd === 0 ? 6 : vfd - 1;
-    
-    const days = [];
-    for (let i = 0; i < voff; i++) days.push(<div key={`e-${i}`} className="mini-day empty"></div>);
-    
-    for (let d = 1; d <= vdim; d++) {
-      const ds = `${vy}-${String(vm + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const date = new Date(vy, vm, d);
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      const isSelected = selectedDate === ds;
-      
-      days.push(
-        <button
-          key={ds}
-          type="button"
-          className={`mini-day ${isWeekend ? 'weekend' : ''} ${isSelected ? 'active' : ''}`}
-          onClick={() => {
-            onSelect(ds);
-            setIsCalMinimized(true);
-          }}
-        >
-          {d}
-        </button>
-      );
-    }
-
-    if (isCalMinimized) {
-      const [yy, mm, dd] = selectedDate.split('-');
-      return (
-        <div className="mini-calendar-summary" onClick={() => setIsCalMinimized(false)}>
-          <div className="summary-date">
-            <i className="ph ph-calendar" />
-            <span>{dd}/{mm}/{yy}</span>
-          </div>
-          <button type="button" className="btn btn-ghost btn-sm">{t('calendar.change')}</button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="mini-calendar animate-in">
-        <div className="mini-calendar-header">
-          {monthNames[vm]} {vy}
-        </div>
-        <div className="mini-calendar-weekdays">
-          {weekdaysShort.map(w => <span key={w}>{w}</span>)}
-        </div>
-        <div className="mini-calendar-grid">
-          {days}
-        </div>
-      </div>
-    );
-  };
-
   const fd = new Date(y, m, 1).getDay();
   const dim = new Date(y, m + 1, 0).getDate();
   const off = fd === 0 ? 6 : fd - 1;
@@ -202,6 +176,19 @@ export default function Calendar() {
         notes: eNotes 
       });
       if (!res.success) { showToast(res.error ?? t('common.error'), 'error'); return; }
+      
+      // Ensure patient profile if accepted
+      if (eStatus === 'true') {
+        await ensurePatientProfileForBooking({
+          booking_id_db: selApt.booking_id_db,
+          first_name: eFn,
+          last_name: eLn,
+          e_mail: eEm,
+          phone_number: ePh,
+          notes: eNotes
+        });
+      }
+
       showToast(t('calendar.update_success'), 'success'); setShowDet(false); setEditing(false); fetchApts();
     } catch { showToast(t('common.error'), 'error'); }
   };
@@ -340,16 +327,16 @@ export default function Calendar() {
                   type={eType} setType={setEType}
                   notes={eNotes} setNotes={setENotes}
                   ignoreBookingId={selApt.booking_id_db || undefined}
-                />
-
-                <div className="appt-form-group span-2"><label>{t('calendar.status')}</label><select value={eStatus} onChange={e => setEStatus(e.target.value)}><option value="null">{t('calendar.status_pending')}</option><option value="true">{t('calendar.status_accepted')}</option><option value="false">{t('calendar.status_rejected')}</option></select></div>
-                <div className="appt-form-group span-2">
-                  <label className="toggle-switch">
-                    <input type="checkbox" checked={eComplete} onChange={e => setEComplete(e.target.checked)} />
-                    <span className="slider"></span>
-                    <span className="toggle-label">{t('calendar.visit_completed')}</span>
-                  </label>
-                </div>
+                >
+                  <div className="appt-form-group span-2"><label>{t('calendar.status')}</label><select value={eStatus} onChange={e => setEStatus(e.target.value)}><option value="null">{t('calendar.status_pending')}</option><option value="true">{t('calendar.status_accepted')}</option><option value="false">{t('calendar.status_rejected')}</option></select></div>
+                  <div className="appt-form-group span-2">
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={eComplete} onChange={e => setEComplete(e.target.checked)} />
+                      <span className="slider"></span>
+                      <span className="toggle-label">{t('calendar.visit_completed')}</span>
+                    </label>
+                  </div>
+                </BookingFields>
               </div>
               <div className="appt-form-actions">
                 <button type="button" className="btn btn-ghost text-danger" onClick={() => handleDel(selApt)}><i className="ph ph-trash" /> {t('common.delete')}</button>

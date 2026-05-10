@@ -205,5 +205,18 @@
     "status_rejected": "Prenotazione rifiutata con successo!",
     "quick_actions": "Azioni rapide",
     "view_profile": "Vedi Profilo"
+  },
+  "my_profile": {
+    "title": "Il mio profilo",
+    "subtitle": "Gestisci le tue informazioni personali e le impostazioni dell'account.",
+    "personal_info": "Informazioni Personali",
+    "email": "Email",
+    "role": "Ruolo",
+    "admin": "Amministratore",
+    "last_login": "Ultimo accesso",
+    "account_settings": "Impostazioni Account",
+    "security": "Sicurezza",
+    "change_password": "Cambia Password",
+    "app_settings": "Impostazioni App"
   }
 }

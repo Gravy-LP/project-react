@@ -26,3 +26,18 @@ export function formatPhoneNumber(phone: string | null): string {
   // Fallback for other lengths
   return phone;
 }
+
+/**
+ * Returns the initials of a name.
+ * Example: "Mario Rossi" -> "MR"
+ */
+export function getInitials(name: string): string {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}

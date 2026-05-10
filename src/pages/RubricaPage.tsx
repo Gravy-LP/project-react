@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { formatPhoneNumber } from '../lib/formatters';
 import Modal from '../components/Modal';
 import BookingFields from '../components/BookingFields';
+import DatePicker from '../components/DatePicker';
 import { useLongPress } from '../hooks/useLongPress';
 import { useTranslation } from '../context/LanguageContext';
 import '../styles/rubrica.css';
@@ -114,8 +115,10 @@ export default function RubricaPage() {
   const [withBooking, setWithBooking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeMenuPatient, setActiveMenuPatient] = useState<{id: string, x: number, y: number} | null>(null);
+  const [dob, setDob] = useState('');
 
-  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [bookingDate, setBookingDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [bookingTime, setBookingTime] = useState('');
   const [bookingType, setBookingType] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
@@ -150,6 +153,8 @@ export default function RubricaPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
+    data.date_of_birth = dob;
+
 
     if (!data.first_name || !data.last_name) {
       showToast(t('rubrica.name_required'), 'error');
@@ -276,17 +281,17 @@ export default function RubricaPage() {
           <p>{t('rubrica.form_header_desc')}</p>
         </div>
 
-        <form className="patient-form" onSubmit={handleCreateSubmit}>
-          <div className="form-grid">
-            <div className="form-group">
+        <form onSubmit={handleCreateSubmit}>
+          <div className="appt-form-grid">
+            <div className="appt-form-group">
               <label>{t('calendar.first_name')} *</label>
               <input type="text" name="first_name" placeholder="es. Mario" required />
             </div>
-            <div className="form-group">
+            <div className="appt-form-group">
               <label>{t('calendar.last_name')} *</label>
               <input type="text" name="last_name" placeholder="es. Rossi" required />
             </div>
-            <div className="form-group">
+            <div className="appt-form-group">
               <label>{t('calendar.email')}</label>
               <input type="email" name="e_mail" placeholder="mario@esempio.it" />
             </div>
@@ -294,11 +299,12 @@ export default function RubricaPage() {
               <label>{t('calendar.phone')}</label>
               <input type="tel" name="phone_number" placeholder="+39 ..." />
             </div>
-            <div className="form-group">
-              <label>{t('rubrica.dob')}</label>
-              <input type="date" name="date_of_birth" />
-            </div>
-            <div className="form-group full-width">
+            <DatePicker 
+              date={dob} 
+              setDate={setDob} 
+              label={t('rubrica.dob')} 
+            />
+            <div className="appt-form-group span-2">
               <label>{t('rubrica.internal_notes')}</label>
               <textarea name="notes" placeholder={t('rubrica.notes_placeholder')} rows={3}></textarea>
             </div>
@@ -317,14 +323,12 @@ export default function RubricaPage() {
           </div>
 
           {withBooking && (
-            <div className="booking-subform animate-in" style={{ marginTop: '20px' }}>
-              <BookingFields 
-                date={bookingDate} setDate={setBookingDate}
-                time={bookingTime} setTime={setBookingTime}
-                type={bookingType} setType={setBookingType}
-                notes={bookingNotes} setNotes={setBookingNotes}
-              />
-            </div>
+            <BookingFields 
+              date={bookingDate} setDate={setBookingDate}
+              time={bookingTime} setTime={setBookingTime}
+              type={bookingType} setType={setBookingType}
+              notes={bookingNotes} setNotes={setBookingNotes}
+            />
           )}
 
           <div className="form-actions">

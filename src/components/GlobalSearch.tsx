@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchBookings, type BookingPayload } from '../lib/api';
+import { getInitials } from '../lib/formatters';
 import '../styles/search.css';
 
 interface GlobalSearchProps {
@@ -45,8 +46,6 @@ export default function GlobalSearch({ isOpen, setIsOpen }: GlobalSearchProps) {
 
   const showDropdown = isOpen && query.trim().length > 0;
 
-  const getInitials = (first: string, last: string) =>
-    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   const handleResultClick = (b: BookingPayload) => {
     setIsOpen(false);
@@ -146,7 +145,7 @@ export default function GlobalSearch({ isOpen, setIsOpen }: GlobalSearchProps) {
                 className="search-item"
                 onClick={() => handleResultClick(b)}
               >
-                <div className="search-item-avatar">{getInitials(first, last)}</div>
+                <div className="search-item-avatar">{getInitials(`${first} ${last}`)}</div>
                 <div className="search-item-info">
                   <div className="search-item-name">{first} {last}</div>
                   <div className="search-item-contact">

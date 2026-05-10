@@ -187,5 +187,23 @@
     "empty_state": "回收站为空",
     "original_date": "原始日期",
     "patient": "患者"
+  },
+  "incoming": {
+    "title": "待处理预约",
+    "search_placeholder": "搜索预约...",
+    "filter": "筛选",
+    "accepted": "已接受",
+    "rejected": "已拒绝",
+    "no_incoming": "暂无待处理预约",
+    "no_accepted": "暂无已接受预约",
+    "no_rejected": "暂无已拒绝预约",
+    "delete_confirm_title": "删除预约？",
+    "delete_confirm_msg": "确定要将此预约移至回收站吗？",
+    "delete_success": "预约已移至回收站！",
+    "status_restored": "预约已成功恢复！",
+    "status_accepted": "预约已成功接受！",
+    "status_rejected": "预约已成功拒绝！",
+    "quick_actions": "快速操作",
+    "view_profile": "查看资料"
   }
 }

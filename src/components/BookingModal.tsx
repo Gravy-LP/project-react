@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { useToast } from '../context/ToastContext';
 import { createBooking, searchBookings, type BookingPayload } from '../lib/api';
+import { getInitials } from '../lib/formatters';
 import { getAvailableSlots } from '../lib/booking-utils';
 import '../styles/calendar.css';
 import '../styles/modal.css';
@@ -53,7 +54,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
 
   useEffect(() => {
     if (isOpen) {
-      const d = initialDate || new Date().toISOString().split('T')[0];
+      const d = initialDate || new Date().toLocaleDateString('en-CA');
       setDate(d);
       setTime(initialTime || '');
       setType('');
@@ -136,8 +137,6 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
     }
   };
 
-  const getInitials = (first: string, last: string | null | undefined) =>
-    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   const getLocaleTag = (lang: string) => {
     switch(lang) {
@@ -179,7 +178,7 @@ export default function BookingModal({ isOpen, onClose, initialDate, initialTime
           <div className="modal-search-results glass-panel">
             {searchResults.slice(0, 5).map(res => (
               <div key={res.booking_id_db} className="search-item" onClick={() => selectContact(res)}>
-                <div className="search-item-avatar">{getInitials(res.first_name, res.last_name)}</div>
+                <div className="search-item-avatar">{getInitials(`${res.first_name} ${res.last_name || ''}`)}</div>
                 <div className="search-item-info">
                   <div className="search-item-name">{res.first_name} {res.last_name}</div>
                   <div className="search-item-contact">{res.phone_number || res.e_mail || t('modal.no_contact_info')}</div>

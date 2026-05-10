@@ -8,6 +8,7 @@ import CalendarPage from './pages/CalendarPage';
 import IncomingBookingsPage from './pages/IncomingBookingsPage';
 import RubricaPage from './pages/RubricaPage';
 import ProfilePage from './pages/ProfilePage';
+import MyProfilePage from './pages/MyProfilePage';
 import BinPage from './pages/BinPage';
 import LoginPage from './pages/LoginPage';
 import { ThemeProvider } from './context/ThemeContext';
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/incoming-bookings" element={<ProtectedRoute><IncomingBookingsPage /></ProtectedRoute>} />
               <Route path="/rubrica" element={<ProtectedRoute><RubricaPage /></ProtectedRoute>} />
               <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/profilo" element={<ProtectedRoute><MyProfilePage /></ProtectedRoute>} />
               <Route path="/bin" element={<ProtectedRoute><BinPage /></ProtectedRoute>} />
             </Routes>
           </ConfirmProvider>

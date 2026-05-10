@@ -187,5 +187,23 @@
     "empty_state": "La corbeille est vide",
     "original_date": "Date Originale",
     "patient": "Patient"
+  },
+  "incoming": {
+    "title": "Réservations Entrantes",
+    "search_placeholder": "Rechercher une réservation...",
+    "filter": "Filtrer",
+    "accepted": "Acceptées",
+    "rejected": "Refusées",
+    "no_incoming": "Aucune réservation entrante",
+    "no_accepted": "Aucune réservation acceptée",
+    "no_rejected": "Aucune réservation refusée",
+    "delete_confirm_title": "Supprimer la réservation ?",
+    "delete_confirm_msg": "Êtes-vous sûr de vouloir déplacer cette réservation dans la corbeille ?",
+    "delete_success": "Réservation déplacée dans la corbeille !",
+    "status_restored": "Réservation restaurée avec succès !",
+    "status_accepted": "Réservation acceptée avec succès !",
+    "status_rejected": "Réservation refusée avec succès !",
+    "quick_actions": "Actions Rapides",
+    "view_profile": "Voir le Profil"
   }
 }

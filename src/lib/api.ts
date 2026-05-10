@@ -255,3 +255,50 @@ export async function createPatient(data: Partial<PatientProfile>): Promise<{ su
     return { success: false, error: (err as Error).message };
   }
 }
+export async function ensurePatientProfileForBooking(booking: any): Promise<{ profileId?: string, error?: string }> {
+  try {
+    if (booking.profile_id) return { profileId: booking.profile_id };
+
+    // Check if patient exists by email or phone
+    const { data: existing } = await supabase
+      .from('PatientProfile')
+      .select('id')
+      .or(`e_mail.eq.${booking.e_mail || booking.email},phone_number.eq.${booking.phone_number || booking.phone}`)
+      .maybeSingle();
+
+    let profileId = existing?.id;
+
+    if (!profileId) {
+      // Create new profile
+      const { data: newProfile, error: createError } = await supabase
+        .from('PatientProfile')
+        .insert([{
+          first_name: booking.first_name,
+          last_name: booking.last_name,
+          e_mail: booking.e_mail || booking.email,
+          phone_number: booking.phone_number || booking.phone,
+          notes: booking.notes,
+          booking_ids: [booking.booking_id_db]
+        }])
+        .select('id')
+        .single();
+      
+      if (createError) return { error: createError.message };
+      profileId = newProfile.id;
+    }
+
+    if (profileId) {
+      // Link booking to profile
+      await supabase
+        .from('Booking')
+        .update({ profile_id: profileId })
+        .eq('booking_id_db', booking.booking_id_db);
+      
+      return { profileId };
+    }
+
+    return { error: 'Could not resolve profile' };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}

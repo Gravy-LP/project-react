@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAvailableSlots } from '../lib/booking-utils';
 import { useTranslation } from '../context/LanguageContext';
+import DatePicker from './DatePicker';
 
 interface BookingFieldsProps {
   date: string;
@@ -12,6 +13,7 @@ interface BookingFieldsProps {
   notes: string;
   setNotes: (notes: string) => void;
   ignoreBookingId?: string;
+  children?: React.ReactNode;
 }
 
 export default function BookingFields({ 
@@ -19,11 +21,19 @@ export default function BookingFields({
   time, setTime, 
   type, setType, 
   notes, setNotes,
-  ignoreBookingId
+  ignoreBookingId,
+  children
 }: BookingFieldsProps) {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isTimeMinimized, setIsTimeMinimized] = useState(!!time);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!time) {
+      setIsTimeMinimized(false);
+    }
+  }, [time]);
 
   const serviceOptions = [
     { value: '', label: t('booking.services.select') },
@@ -50,43 +60,57 @@ export default function BookingFields({
     setIsLoadingSlots(false);
   };
 
+
   return (
-    <div className="booking-fields-container">
-      <div className="appt-form-group span-2">
-        <label>{t('booking.date')} *</label>
-        <input 
-          type="date" 
-          value={date} 
-          onChange={(e) => setDate(e.target.value)} 
-          required 
-        />
-      </div>
+    <div className="booking-fields-container animate-in">
+      <DatePicker 
+        date={date} 
+        setDate={setDate} 
+        label={t('booking.date')} 
+        required 
+      />
 
       <div className="appt-form-group span-2">
-        <label>{t('booking.time')}: <strong style={{color: 'var(--color-accent)'}}>{time || t('booking.none')}</strong></label>
-        {isLoadingSlots ? (
-          <div className="slot-hint">{t('common.loading')}</div>
-        ) : (
-          <div className="slot-grid-compact">
-            {/* If editing and current time is not in available slots, show it anyway as selected */}
-            {time && !availableSlots.includes(time) && (
-              <button type="button" className="slot-chip active">{time}</button>
-            )}
-            {availableSlots.length > 0 ? (
-              availableSlots.map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`slot-chip ${time === s ? 'active' : ''}`}
-                  onClick={() => setTime(s)}
-                >
-                  {s}
-                </button>
-              ))
-            ) : (
-              <div className="slot-hint" style={{gridColumn: 'span 4'}}>{t('booking.no_slots')}</div>
-            )}
+        <label>{t('booking.time')} *</label>
+        
+        {isTimeMinimized && time ? (
+          <div className="mini-calendar-summary" onClick={() => setIsTimeMinimized(false)}>
+            <div className="summary-date">
+              <i className="ph ph-clock" />
+              <span>{time}</span>
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm">{t('calendar.change')}</button>
           </div>
+        ) : (
+          <>
+            {isLoadingSlots ? (
+              <div className="slot-hint">{t('common.loading')}</div>
+            ) : (
+              <div className="slot-grid-compact animate-in">
+                {/* If editing and current time is not in available slots, show it anyway as selected */}
+                {time && !availableSlots.includes(time) && (
+                  <button type="button" className="slot-chip active">{time}</button>
+                )}
+                {availableSlots.length > 0 ? (
+                  availableSlots.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`slot-chip ${time === s ? 'active' : ''}`}
+                      onClick={() => {
+                        setTime(s);
+                        setIsTimeMinimized(true);
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))
+                ) : (
+                  <div className="slot-hint" style={{gridColumn: 'span 4'}}>{t('booking.no_slots')}</div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -109,6 +133,7 @@ export default function BookingFields({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
+      {children}
     </div>
   );
 }

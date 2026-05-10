@@ -205,5 +205,18 @@
     "status_rejected": "Booking successfully rejected!",
     "quick_actions": "Quick Actions",
     "view_profile": "View Profile"
+  },
+  "my_profile": {
+    "title": "My Profile",
+    "subtitle": "Manage your personal information and account settings.",
+    "personal_info": "Personal Information",
+    "email": "Email",
+    "role": "Role",
+    "admin": "Administrator",
+    "last_login": "Last login",
+    "account_settings": "Account Settings",
+    "security": "Security",
+    "change_password": "Change Password",
+    "app_settings": "App Settings"
   }
 }

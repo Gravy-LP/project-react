@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabase';
 import { fetchBookings, updateBooking, deleteBooking } from '../lib/api';
+import { getInitials } from '../lib/formatters';
 import '../styles/notifications.css';
 
 interface Booking {
@@ -60,8 +61,6 @@ export default function NotificationBell({ isOpen, setIsOpen }: NotificationBell
     };
   }, [setIsOpen]);
 
-  const getInitials = (first: string, last: string | null) =>
-    ((first?.[0] || '') + (last?.[0] || '')).toUpperCase();
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'N/A';
@@ -133,7 +132,7 @@ export default function NotificationBell({ isOpen, setIsOpen }: NotificationBell
                     onClick={() => setIsOpen(false)}
                   >
                     <div className="notif-avatar">
-                      {getInitials(notif.first_name, notif.last_name)}
+                      {getInitials(`${notif.first_name} ${notif.last_name || ''}`)}
                     </div>
                     <div className="notif-details">
                       <div className="notif-name">
