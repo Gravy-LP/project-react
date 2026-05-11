@@ -244,7 +244,7 @@ function FeatureCard({ f, delay }: { f: typeof features[0]; delay: number }) {
 }
 
 /* ── HOW IT WORKS ── */
-function HowItWorks({ steps }: { steps: typeof steps }) {
+function HowItWorks({ steps }: { steps: { n: string; title: string; desc: string }[] }) {
   const { ref, visible } = useReveal();
   return (
     <section id="come-funziona" style={{ padding: '100px 5%', background: '#0a0d1a' }}>
@@ -263,7 +263,7 @@ function HowItWorks({ steps }: { steps: typeof steps }) {
   );
 }
 
-function StepCard({ s, delay }: { s: typeof steps[0]; delay: number }) {
+function StepCard({ s, delay }: { s: { n: string; title: string; desc: string }; delay: number }) {
   const { ref, visible } = useReveal();
   return (
     <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`}
@@ -285,7 +285,7 @@ function StepCard({ s, delay }: { s: typeof steps[0]; delay: number }) {
 }
 
 /* ── TESTIMONIALS ── */
-function TestimonialsSection({ testimonials }: { testimonials: typeof testimonials }) {
+function TestimonialsSection({ testimonials }: { testimonials: { name: string; role: string; text: string }[] }) {
   const { ref, visible } = useReveal();
   return (
     <section id="testimonianze" style={{ padding: '100px 5%', position: 'relative' }}>
@@ -304,7 +304,7 @@ function TestimonialsSection({ testimonials }: { testimonials: typeof testimonia
   );
 }
 
-function TestiCard({ t, delay }: { t: typeof testimonials[0]; delay: number }) {
+function TestiCard({ t, delay }: { t: { name: string; role: string; text: string }; delay: number }) {
   const { ref, visible } = useReveal();
   return (
     <div ref={ref} className={`lp-reveal lp-card-hover${visible ? ' lp-visible' : ''}`}

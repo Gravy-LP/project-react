@@ -67,7 +67,7 @@ export default function ProfilePage() {
         const { bookings: allBookings } = await fetchBookings();
         if (allBookings) {
           const patientBookings = allBookings.filter(b => 
-            data.booking_id_db && (data.booking_ids?.includes(b.booking_id_db!) || 
+            (data.booking_ids?.includes(b.booking_id_db!) || 
             (b.first_name === data.first_name && b.last_name === data.last_name))
           );
           setBookings(patientBookings);
@@ -97,7 +97,7 @@ export default function ProfilePage() {
     const { bookings: allBookings } = await fetchBookings();
     if (allBookings && patient) {
       const patientBookings = allBookings.filter(b => 
-        patient.booking_id_db && (patient.booking_ids?.includes(b.booking_id_db!) || 
+        (patient.booking_ids?.includes(b.booking_id_db!) || 
         (b.first_name === patient.first_name && b.last_name === patient.last_name))
       );
       setBookings(patientBookings);
