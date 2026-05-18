@@ -103,6 +103,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  position: relative;
 }
 
 .input-with-icon i {
@@ -128,6 +129,27 @@
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
   outline: none;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.password-toggle-btn i {
+  transition: color 0.2s;
+}
+
+.password-toggle-btn:hover i {
+  color: var(--color-accent);
 }
 
 .login-btn {

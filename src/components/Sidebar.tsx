@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/sidebar.css';
 interface SidebarProps {
   isOpen?: boolean;
@@ -13,6 +14,7 @@ import { useTranslation } from '../context/LanguageContext';
 export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }: SidebarProps) {
   const [isHoverLocked, setIsHoverLocked] = useState(false);
   const { t } = useTranslation();
+  const { role } = useAuth();
 
   const handleCollapse = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,22 +42,39 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
         </div>
 
         <nav className="nav-links">
-          <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <i className="ph ph-squares-four" />
-            <span className="sidebar-label">{t('sidebar.dashboard')}</span>
-          </NavLink>
-          <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <i className="ph ph-calendar" />
-            <span className="sidebar-label">{t('sidebar.calendar')}</span>
-          </NavLink>
-          <NavLink to="/incoming-bookings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <i className="ph ph-calendar-plus" />
-            <span className="sidebar-label">{t('sidebar.bookings')}</span>
-          </NavLink>
-          <NavLink to="/rubrica" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <i className="ph ph-address-book" />
-            <span className="sidebar-label">{t('sidebar.contacts')}</span>
-          </NavLink>
+          {role === 'owner' && (
+            <>
+              <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-squares-four" />
+                <span className="sidebar-label">{t('sidebar.dashboard')}</span>
+              </NavLink>
+              <NavLink to="/calendar" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-calendar" />
+                <span className="sidebar-label">{t('sidebar.calendar')}</span>
+              </NavLink>
+              <NavLink to="/incoming-bookings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-calendar-plus" />
+                <span className="sidebar-label">{t('sidebar.bookings')}</span>
+              </NavLink>
+              <NavLink to="/rubrica" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-address-book" />
+                <span className="sidebar-label">{t('sidebar.contacts')}</span>
+              </NavLink>
+            </>
+          )}
+          
+          {role === 'user' && (
+            <>
+              <NavLink to="/profilo" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-user" />
+                <span className="sidebar-label">{t('my_profile.personal_info')}</span>
+              </NavLink>
+              <NavLink to="/book" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-calendar-plus" />
+                <span className="sidebar-label">Prenota</span>
+              </NavLink>
+            </>
+          )}
         </nav>
 
         <div className="sidebar-footer">

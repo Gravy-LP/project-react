@@ -37,7 +37,7 @@ export default function NotificationBell({ isOpen, setIsOpen }: NotificationBell
     fetchNotifications();
 
     const channel = supabase
-      .channel('notification-changes')
+      .channel(`notification-changes-${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Booking' },

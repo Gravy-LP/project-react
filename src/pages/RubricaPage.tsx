@@ -136,7 +136,7 @@ export default function RubricaPage() {
     loadPatients();
 
     const channel = supabase
-      .channel('patient-profile-changes')
+      .channel(`patient-profile-changes-${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'PatientProfile' },

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-/* ─── tiny hook: animate on scroll ─── */
+/* ─── hooks ─── */
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -14,38 +15,27 @@ function useReveal() {
   return { ref, visible };
 }
 
+function useScroll() {
+  const [scrollY, setScrollY] = useState(0);
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  return scrollY;
+}
+
 /* ─── data ─── */
-const features = [
-  { icon: '📅', title: 'Calendario Intelligente', desc: 'Vista mensile e giornaliera con drag-and-drop. Ogni appuntamento sempre a portata di mano.' },
-  { icon: '🔔', title: 'Richieste in Tempo Reale', desc: 'Le nuove prenotazioni arrivano istantaneamente. Accetta o rifiuta con un tap, anche da mobile.' },
-  { icon: '👥', title: 'Rubrica Pazienti', desc: 'Profili costruiti automaticamente dal flusso di prenotazione. Zero doppioni, zero caos.' },
-  { icon: '📊', title: 'Dashboard Clinica', desc: 'Overview immediata: prossimi appuntamenti e richieste in attesa, tutto in un colpo d\'occhio.' },
-  { icon: '📱', title: 'Mobile First', desc: 'Ottimizzato per smartphone. Gesture di long-press per azioni rapide, ovunque tu sia.' },
-  { icon: '⚡', title: 'Sync Real-Time', desc: 'Powered by Supabase. Ogni modifica si propaga in millisecondi su tutti i dispositivi.' },
-];
-
-const steps = [
-  { n: '01', title: 'Il paziente prenota', desc: 'Tramite il tuo link personalizzato, senza telefonate.' },
-  { n: '02', title: 'Ricevi la notifica', desc: 'Il sistema ti avvisa in real-time e aggiunge la richiesta alla coda.' },
-  { n: '03', title: 'Accetti con un tap', desc: 'Conferma o rifiuta. Il calendario si aggiorna automaticamente.' },
-];
-
 const testimonials = [
-  { name: 'Dott.ssa M. Ferretti', role: 'Medicina Generale', text: 'Ho eliminato completamente le telefonate per le prenotazioni. I pazienti sono più soddisfatti e io ho più tempo.' },
-  { name: 'Studio Ortopedico Bianchi', role: 'Ortopedia', text: 'La rubrica che si costruisce da sola è geniale. Ogni paziente ha il suo profilo senza che io faccia nulla.' },
-  { name: 'Dr. L. Conti', role: 'Fisioterapia', text: 'Finalmente gestisco tutto dal telefono. Il long-press per le azioni rapide è incredibilmente comodo.' },
+  { name: 'Dott.ssa M. Ferretti', role: 'Medicina Generale', text: 'Ho eliminato completamente le telefonate per le prenotazioni. I pazienti sono più soddisfatti e io ho più tempo.', avatar: 'MF' },
+  { name: 'Studio Ortopedico Bianchi', role: 'Ortopedia', text: 'La rubrica che si costruisce da sola è geniale. Ogni paziente ha il suo profilo senza che io faccia nulla.', avatar: 'OB' },
+  { name: 'Dr. L. Conti', role: 'Fisioterapia', text: 'Finalmente gestisco tutto dal telefono. Il long-press per le azioni rapide è incredibilmente comodo.', avatar: 'LC' },
 ];
-
-/* ─── styles (all inline so zero external deps) ─── */
-const G = {
-  '--c1': '#6366f1',
-  '--c2': '#8b5cf6',
-  '--c3': '#06b6d4',
-} as React.CSSProperties;
 
 export default function LandingPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [menuOpen, setMenuOpen] = useState(false);
+  const scrollY = useScroll();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const move = (e: MouseEvent) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -53,307 +43,434 @@ export default function LandingPage() {
     return () => window.removeEventListener('mousemove', move);
   }, []);
 
+  // Parallax calcs
+  const heroMockupRotateX = Math.max(0, 15 - scrollY * 0.05);
+  const heroMockupScale = Math.min(1.05, 0.9 + scrollY * 0.0005);
+  const heroMockupTranslateY = scrollY * 0.2;
+
+  const bgOffsetY = scrollY * 0.5;
+
   return (
-    <div style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif", background: '#080b14', color: '#e2e8f0', overflowX: 'hidden', ...G }}>
-      {/* Google Fonts */}
+    <div style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif", background: '#030712', color: '#f8fafc', overflowX: 'hidden', minHeight: '100vh' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         html{scroll-behavior:smooth}
-        ::selection{background:#6366f133;color:#a5b4fc}
-        .lp-reveal{opacity:0;transform:translateY(32px);transition:opacity .7s ease,transform .7s ease}
-        .lp-reveal.lp-visible{opacity:1;transform:translateY(0)}
-        .lp-card-hover{transition:transform .3s ease,box-shadow .3s ease}
-        .lp-card-hover:hover{transform:translateY(-6px);box-shadow:0 20px 60px #6366f133}
-        .lp-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;cursor:pointer;font-size:1rem;font-weight:600;padding:14px 32px;transition:all .25s ease;letter-spacing:.01em}
-        .lp-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px #6366f155}
-        .lp-btn-ghost{background:transparent;border:1.5px solid #ffffff22;border-radius:12px;color:#e2e8f0;cursor:pointer;font-size:1rem;font-weight:500;padding:13px 28px;transition:all .25s ease}
-        .lp-btn-ghost:hover{border-color:#6366f1;color:#a5b4fc}
-        .lp-tag{background:#6366f115;border:1px solid #6366f133;border-radius:999px;color:#a5b4fc;display:inline-block;font-size:.8rem;font-weight:600;letter-spacing:.08em;padding:6px 16px;text-transform:uppercase}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
-        @keyframes pulse-ring{0%{transform:scale(.9);opacity:.7}70%{transform:scale(1.3);opacity:0}100%{opacity:0}}
-        @keyframes gradient-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-        @keyframes spin-slow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes appear{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @media(max-width:768px){
-          .lp-hero-title{font-size:clamp(2.2rem,9vw,4rem)!important}
-          .lp-features-grid{grid-template-columns:1fr!important}
-          .lp-steps{flex-direction:column!important}
-          .lp-testi-grid{grid-template-columns:1fr!important}
-          .lp-nav-links{display:none!important}
-          .lp-hero-btns{flex-direction:column!important;align-items:stretch!important}
+        ::selection{background:#6366f140;color:#e0e7ff}
+        
+        .reveal{opacity:0;transform:translateY(40px);transition:all 0.8s cubic-bezier(0.16, 1, 0.3, 1)}
+        .reveal.visible{opacity:1;transform:translateY(0)}
+        
+        .btn-primary {
+          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          border: 1px solid #8b5cf655;
+          border-radius: 999px;
+          color: white;
+          cursor: pointer;
+          font-weight: 600;
+          padding: 14px 36px;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 25px -5px #6366f166;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .btn-primary:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 20px 35px -5px #6366f188;
+        }
+
+        .btn-secondary {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 999px;
+          color: white;
+          cursor: pointer;
+          font-weight: 500;
+          padding: 14px 36px;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+        .btn-secondary:hover {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.2);
+        }
+
+        .glass-panel {
+          background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 24px;
+          backdrop-filter: blur(20px);
+          box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #2dd4bf 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .bento-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          grid-template-rows: auto auto;
+          gap: 24px;
+        }
+        .bento-item {
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          overflow: hidden;
+          position: relative;
+        }
+        .bento-item:hover {
+          transform: translateY(-8px);
+        }
+
+        @keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-20px) } }
+        @keyframes pulse-glow { 0%, 100% { opacity: 0.4; transform: scale(1) } 50% { opacity: 0.6; transform: scale(1.05) } }
+
+        @media (max-width: 1024px) {
+          .bento-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .bento-grid { grid-template-columns: 1fr; }
+          .hero-title { font-size: clamp(2.5rem, 10vw, 4rem)!important; }
+          .nav-links { display: none!important; }
         }
       `}</style>
 
-      {/* ── CURSOR GLOW ── */}
+      {/* Dynamic Cursor Glow */}
       <div style={{
-        position: 'fixed', top: mousePos.y - 200, left: mousePos.x - 200,
-        width: 400, height: 400, borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
-        background: 'radial-gradient(circle, #6366f118 0%, transparent 70%)',
-        transition: 'top .1s ease, left .1s ease',
+        position: 'fixed', top: mousePos.y - 250, left: mousePos.x - 250,
+        width: 500, height: 500, borderRadius: '50%', pointerEvents: 'none', zIndex: 9999,
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 60%)',
+        transition: 'top 0.1s ease-out, left 0.1s ease-out',
+        mixBlendMode: 'screen'
       }} />
 
-      {/* ── NAV ── */}
+      {/* Navigation */}
       <nav style={{
-        alignItems: 'center', backdropFilter: 'blur(20px)', background: '#080b14cc',
-        borderBottom: '1px solid #ffffff0a', display: 'flex', justifyContent: 'space-between',
-        padding: '0 5%', position: 'fixed', top: 0, width: '100%', zIndex: 100, height: 68,
+        position: 'fixed', top: 0, width: '100%', height: '80px', zIndex: 100,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 5%',
+        background: scrollY > 20 ? 'rgba(3, 7, 18, 0.8)' : 'transparent',
+        backdropFilter: scrollY > 20 ? 'blur(20px)' : 'none',
+        borderBottom: scrollY > 20 ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
+        transition: 'all 0.3s ease'
       }}>
-        <div style={{ alignItems: 'center', display: 'flex', gap: 10, fontWeight: 800, fontSize: '1.2rem' }}>
-          <span style={{ fontSize: '1.5rem' }}>📅</span>
-          <span style={{ background: 'linear-gradient(135deg,#a5b4fc,#67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AptBooker</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 800, fontSize: '1.4rem' }}>
+          <div style={{ background: 'linear-gradient(135deg, #6366f1, #2dd4bf)', borderRadius: '12px', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.2rem' }}>
+            <i className="ph ph-calendar-check" />
+          </div>
+          <span style={{ letterSpacing: '-0.02em' }}>AptBooker</span>
         </div>
-        <div className="lp-nav-links" style={{ alignItems: 'center', display: 'flex', gap: 32 }}>
-          {['Funzionalità', 'Come Funziona', 'Testimonianze'].map(l => (
-            <a key={l} href={`#${l.toLowerCase().replace(/\s+/g, '-').replace('à', 'a')}`}
-              style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '.95rem', fontWeight: 500, transition: 'color .2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#a5b4fc')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}>{l}</a>
-          ))}
+        <div className="nav-links" style={{ display: 'flex', gap: 40, fontWeight: 500, color: '#94a3b8' }}>
+          <a href="#features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = 'white'} onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>Funzionalità</a>
+          <a href="#dashboard" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = 'white'} onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>L'Interfaccia</a>
+          <a href="#testimonials" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = 'white'} onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>Dicono di noi</a>
         </div>
-        <button className="lp-btn-primary" style={{ fontSize: '.9rem', padding: '10px 22px' }}>Inizia Gratis →</button>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <button className="btn-secondary" onClick={() => navigate('/login')} style={{ padding: '10px 24px' }}>Accedi</button>
+          <button className="btn-primary" onClick={() => navigate('/login')} style={{ padding: '10px 24px' }}>Inizia Ora</button>
+        </div>
       </nav>
 
-      {/* ── HERO ── */}
-      <section style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'center', padding: '120px 5% 80px', position: 'relative', textAlign: 'center' }}>
-        {/* bg orbs */}
-        <div style={{ animation: 'float 6s ease-in-out infinite', background: 'radial-gradient(circle, #6366f130, transparent 70%)', borderRadius: '50%', filter: 'blur(60px)', height: 600, left: '-10%', position: 'absolute', top: '5%', width: 600 }} />
-        <div style={{ animation: 'float 8s ease-in-out infinite reverse', background: 'radial-gradient(circle, #8b5cf630, transparent 70%)', borderRadius: '50%', filter: 'blur(60px)', height: 500, position: 'absolute', right: '-5%', top: '20%', width: 500 }} />
-        <div style={{ animation: 'float 7s ease-in-out infinite 2s', background: 'radial-gradient(circle, #06b6d420, transparent 70%)', borderRadius: '50%', bottom: '10%', filter: 'blur(80px)', height: 400, left: '30%', position: 'absolute', width: 400 }} />
+      {/* Hero Section */}
+      <section style={{
+        position: 'relative', minHeight: '130vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', paddingTop: '180px', overflow: 'hidden'
+      }}>
+        {/* Massive Background Blobs */}
+        <div style={{ position: 'absolute', top: `${-100 + bgOffsetY}px`, left: '10%', width: '800px', height: '800px', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 60%)', filter: 'blur(80px)', animation: 'pulse-glow 8s infinite alternate', zIndex: 0 }} />
+        <div style={{ position: 'absolute', top: `${200 + bgOffsetY * 0.8}px`, right: '-10%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(45,212,191,0.15) 0%, transparent 60%)', filter: 'blur(60px)', animation: 'pulse-glow 10s infinite alternate-reverse', zIndex: 0 }} />
 
-        <div style={{ animation: 'appear .8s ease both', position: 'relative', zIndex: 1, maxWidth: 860 }}>
-          <span className="lp-tag" style={{ marginBottom: 24, display: 'inline-block' }}>✨ Gestione Clinica del Futuro</span>
-
-          <h1 className="lp-hero-title" style={{
-            background: 'linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #67e8f9 100%)',
-            backgroundSize: '200% 200%', animation: 'gradient-shift 4s ease infinite',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            fontSize: 'clamp(3rem, 6vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1,
-            letterSpacing: '-.03em', marginBottom: 24,
-          }}>
-            Il tuo studio medico,<br />finalmente senza caos.
-          </h1>
-
-          <p style={{ color: '#94a3b8', fontSize: 'clamp(1rem, 2vw, 1.25rem)', fontWeight: 400, lineHeight: 1.7, marginBottom: 48, maxWidth: 620, margin: '0 auto 48px' }}>
-            AptBooker gestisce prenotazioni, pazienti e calendario in un'unica dashboard glassmorphica. Real-time, mobile-first, zero telefonate.
-          </p>
-
-          <div className="lp-hero-btns" style={{ alignItems: 'center', display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="lp-btn-primary" style={{ fontSize: '1.05rem', padding: '16px 36px' }}>Prova Gratis 14 giorni →</button>
-            <button className="lp-btn-ghost" style={{ fontSize: '1.05rem', padding: '15px 32px' }}>▶ Guarda il Demo</button>
+        <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', maxWidth: '900px', padding: '0 5%' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '6px 16px', borderRadius: '999px', color: '#a5b4fc', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '32px' }}>
+            <span style={{ position: 'relative', display: 'flex', height: 8, width: 8 }}><span style={{ animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite', position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '50%', background: '#818cf8', opacity: 0.75 }}></span><span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: 8, width: 8, background: '#818cf8' }}></span></span>
+            AptBooker v2.0 è live
           </div>
 
-          <p style={{ color: '#475569', fontSize: '.85rem', marginTop: 20 }}>Nessuna carta di credito richiesta · Setup in 2 minuti</p>
+          <h1 className="hero-title" style={{ fontSize: '5.5rem', fontWeight: 900, lineHeight: 1.05, letterSpacing: '-0.04em', marginBottom: '32px' }}>
+            Meno chiamate.<br />Più <span className="gradient-text">pazienti.</span>
+          </h1>
+
+          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto 48px' }}>
+            Prenotazioni automatiche. Calendario Real-Time. Rubrica intelligente. Il tuo studio, ovunque tu sia.
+          </p>
+
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn-primary" style={{ fontSize: '1.1rem', padding: '18px 40px' }} onClick={() => navigate('/login')}>
+              Inizia Gratuitamente <i className="ph ph-arrow-right" />
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '1.1rem', padding: '18px 40px' }}>
+              <i className="ph ph-play-circle" /> Guarda il Demo
+            </button>
+          </div>
         </div>
 
-        {/* mock dashboard preview */}
-        <div style={{ animation: 'appear 1.2s ease both .3s', marginTop: 80, maxWidth: 900, position: 'relative', width: '100%', zIndex: 1 }}>
+        {/* 3D Dashboard Mockup with Parallax */}
+        <div style={{
+          marginTop: '80px',
+          perspective: '1200px',
+          width: '100%',
+          maxWidth: '1100px',
+          padding: '0 5%',
+          zIndex: 10,
+          position: 'relative'
+        }}>
           <div style={{
-            background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-            border: '1px solid #ffffff12', borderRadius: 20,
-            boxShadow: '0 40px 120px #6366f140, 0 0 0 1px #ffffff08',
-            overflow: 'hidden', padding: 24,
+            transform: `rotateX(${heroMockupRotateX}deg) scale(${heroMockupScale}) translateY(${heroMockupTranslateY}px)`,
+            transformStyle: 'preserve-3d',
+            transition: 'transform 0.1s linear',
+            willChange: 'transform'
           }}>
-            {/* fake top bar */}
-            <div style={{ alignItems: 'center', borderBottom: '1px solid #ffffff0a', display: 'flex', gap: 8, marginBottom: 20, paddingBottom: 16 }}>
-              {['#ff5f57', '#febc2e', '#28c840'].map(c => <div key={c} style={{ background: c, borderRadius: '50%', height: 12, width: 12 }} />)}
-              <div style={{ background: '#ffffff08', borderRadius: 6, flex: 1, height: 24, marginLeft: 12 }} />
-            </div>
-            {/* fake content grid */}
-            <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
-              {[
-                { label: 'Prossimi Appuntamenti', count: '8', color: '#6366f1', items: ['Mario Rossi — 09:00', 'Laura Bianchi — 10:30', 'Giuseppe Verdi — 14:00'] },
-                { label: 'Nuove Richieste', count: '3', color: '#f59e0b', items: ['Anna Neri — In attesa', 'Luca Gallo — In attesa', 'Sofia Martini — In attesa'] },
-                { label: 'Pazienti Totali', count: '142', color: '#10b981', items: ['Aggiunto oggi: 2', 'Questa settimana: 8', 'Questo mese: 31'] },
-              ].map(card => (
-                <div key={card.label} style={{ background: '#ffffff06', border: '1px solid #ffffff0a', borderRadius: 12, padding: 16 }}>
-                  <div style={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ color: '#64748b', fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{card.label}</span>
-                    <span style={{ background: card.color + '22', borderRadius: 8, color: card.color, fontSize: '.8rem', fontWeight: 700, padding: '3px 10px' }}>{card.count}</span>
-                  </div>
-                  {card.items.map(item => (
-                    <div key={item} style={{ alignItems: 'center', borderRadius: 6, color: '#94a3b8', display: 'flex', fontSize: '.8rem', gap: 8, marginBottom: 6, padding: '5px 8px' }}>
-                      <div style={{ background: card.color, borderRadius: '50%', flexShrink: 0, height: 6, width: 6 }} />
-                      {item}
+            <div className="glass-panel" style={{
+              padding: 0, overflow: 'hidden',
+              boxShadow: '0 50px 100px -20px rgba(99,102,241,0.25), 0 30px 60px -30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
+            }}>
+              {/* Browser Header */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: 'rgba(15,23,42,0.8)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#eab308' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#22c55e' }} />
+                </div>
+                <div style={{ margin: '0 auto', background: 'rgba(0,0,0,0.2)', padding: '6px 120px', borderRadius: 8, color: '#64748b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="ph ph-lock-key" /> aptbooker.com/dashboard
+                </div>
+              </div>
+
+              {/* App Content */}
+              <div style={{ display: 'flex', height: '600px' }}>
+                {/* Sidebar */}
+                <div style={{ width: '240px', borderRight: '1px solid rgba(255,255,255,0.05)', padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ height: 32, width: '80%', background: 'rgba(255,255,255,0.05)', borderRadius: 8, marginBottom: 24 }} />
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: i === 1 ? 'rgba(99,102,241,0.15)' : 'transparent', borderRadius: 8 }}>
+                      <div style={{ width: 20, height: 20, background: i === 1 ? '#818cf8' : 'rgba(255,255,255,0.1)', borderRadius: 4 }} />
+                      <div style={{ height: 14, width: '60%', background: i === 1 ? '#c7d2fe' : 'rgba(255,255,255,0.1)', borderRadius: 4 }} />
                     </div>
                   ))}
                 </div>
-              ))}
+                {/* Main Area */}
+                <div style={{ flex: 1, padding: '40px', background: 'rgba(15,23,42,0.4)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 40 }}>
+                    <div>
+                      <div style={{ height: 28, width: 200, background: 'rgba(255,255,255,0.9)', borderRadius: 6, marginBottom: 12 }} />
+                      <div style={{ height: 16, width: 300, background: 'rgba(255,255,255,0.4)', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #2dd4bf)' }} />
+                  </div>
+
+                  {/* Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 40 }}>
+                    {[
+                      { color: '#6366f1', value: '12', label: 'Appuntamenti Oggi' },
+                      { color: '#f59e0b', value: '5', label: 'Richieste in Attesa' },
+                      { color: '#10b981', value: '1.2k', label: 'Pazienti in Rubrica' }
+                    ].map(stat => (
+                      <div key={stat.label} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: 24 }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: stat.color, marginBottom: 8 }}>{stat.value}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}>{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* List */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: 24 }}>
+                    <div style={{ height: 20, width: 150, background: 'rgba(255,255,255,0.6)', borderRadius: 4, marginBottom: 24 }} />
+                    {[1, 2, 3].map(i => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: i !== 3 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                          <div>
+                            <div style={{ height: 16, width: 120, background: 'rgba(255,255,255,0.8)', borderRadius: 4, marginBottom: 8 }} />
+                            <div style={{ height: 12, width: 80, background: 'rgba(255,255,255,0.3)', borderRadius: 4 }} />
+                          </div>
+                        </div>
+                        <div style={{ padding: '6px 12px', borderRadius: 999, background: i === 1 ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', border: `1px solid ${i === 1 ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
+                          <div style={{ height: 10, width: 60, background: i === 1 ? '#fcd34d' : '#6ee7b7', borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          {/* glow under mockup */}
-          <div style={{ background: 'linear-gradient(90deg,#6366f1,#8b5cf6,#06b6d4)', borderRadius: '50%', bottom: -40, filter: 'blur(40px)', height: 80, left: '10%', opacity: .4, position: 'absolute', width: '80%' }} />
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
-      <FeatureSection />
+      {/* Social Proof Strip */}
+      <section style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15,23,42,0.3)', padding: '40px 0', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', maxWidth: '1200px', margin: '0 auto', flexWrap: 'wrap', gap: 40, padding: '0 5%' }}>
+          {[
+            { n: '10k+', l: 'Prenotazioni Gestite' },
+            { n: '99.9%', l: 'Uptime Garantito' },
+            { n: 'Zero', l: 'Doppioni in Rubrica' },
+            { n: '< 1s', l: 'Sync in Tempo Reale' }
+          ].map(stat => (
+            <div key={stat.l} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', marginBottom: 8 }}>{stat.n}</div>
+              <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <HowItWorks steps={steps} />
+      {/* Bento Grid Features */}
+      <section id="features" style={{ padding: '160px 5%', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '20%', right: '-20%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', filter: 'blur(60px)', zIndex: 0 }} />
 
-      {/* ── TESTIMONIALS ── */}
-      <TestimonialsSection testimonials={testimonials} />
+        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+          <div className="bento-grid">
+            {/* Large Card: Real Time Calendar */}
+            <div className="glass-panel bento-item" style={{ gridColumn: '1 / -1', padding: 0, display: 'flex', overflow: 'hidden', height: '400px', flexWrap: 'wrap' }}>
+              <div style={{ padding: '48px', flex: '1 1 300px', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(99,102,241,0.1)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', marginBottom: 20 }}>
+                  <i className="ph ph-lightning" />
+                </div>
+                <h3 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>Sync Immediata.</h3>
+                <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>Tutto si aggiorna istantaneamente. Zero attese.</p>
+              </div>
 
-      {/* ── CTA ── */}
-      <CTASection />
+              <div style={{ flex: '1 1 500px', position: 'relative', background: 'rgba(0,0,0,0.2)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
+                {/* Visual Representation of Real Time Sync */}
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '120%', height: '120%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40 }}>
+                  {/* Fake Phone */}
+                  <div style={{ width: 140, height: 280, background: '#0f172a', borderRadius: 24, border: '4px solid #1e293b', padding: 12, position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+                    <div style={{ width: '40%', height: 4, background: '#334155', borderRadius: 2, margin: '0 auto 16px' }} />
+                    <div style={{ height: 40, background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.7rem', fontWeight: 'bold' }}>Accetta</div>
+                    <div style={{ height: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }} />
+                  </div>
 
-      {/* ── FOOTER ── */}
-      <footer style={{ borderTop: '1px solid #ffffff08', color: '#475569', fontSize: '.85rem', padding: '32px 5%', textAlign: 'center' }}>
-        <p>© 2026 AptBooker · Fatto con ❤️ per i professionisti della salute</p>
+                  {/* Connection lines */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {[1, 2, 3].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#2dd4bf', animation: `pulse-glow 1s infinite ${i * 0.2}s` }} />)}
+                  </div>
+
+                  {/* Fake Desktop Calendar */}
+                  <div style={{ width: 220, height: 280, background: '#0f172a', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', padding: 16, boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, height: '100%' }}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => (
+                        <div key={i} style={{ background: i === 6 ? '#2dd4bf' : 'rgba(255,255,255,0.05)', borderRadius: 4, opacity: i === 6 ? 1 : 0.5, transition: 'all 0.3s' }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Medium Card 1: Patients */}
+            <div className="glass-panel bento-item" style={{ gridColumn: 'span 2', padding: 0, display: 'flex', overflow: 'hidden', height: '320px' }}>
+              <div style={{ padding: '40px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h3 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>Rubrica Auto.</h3>
+                <p style={{ color: '#94a3b8', fontSize: '1rem' }}>Si costruisce da sola ad ogni prenotazione.</p>
+              </div>
+              <div style={{ flex: 1, position: 'relative', background: 'rgba(16,185,129,0.05)' }}>
+                {/* Floating profile cards */}
+                <div style={{ position: 'absolute', top: 40, left: 20, right: -20, background: '#1e293b', padding: 16, borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', gap: 12, alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ef4444' }} />
+                  <div><div style={{ width: 100, height: 8, background: '#fff', borderRadius: 4, marginBottom: 6 }} /><div style={{ width: 60, height: 6, background: 'rgba(255,255,255,0.5)', borderRadius: 4 }} /></div>
+                </div>
+                <div style={{ position: 'absolute', top: 110, left: 40, right: -40, background: '#0f172a', padding: 16, borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', gap: 12, alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)', zIndex: 2 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6' }} />
+                  <div><div style={{ width: 120, height: 8, background: '#fff', borderRadius: 4, marginBottom: 6 }} /><div style={{ width: 80, height: 6, background: 'rgba(255,255,255,0.5)', borderRadius: 4 }} /></div>
+                </div>
+                <div style={{ position: 'absolute', top: 180, left: 60, right: -60, background: '#1e293b', padding: 16, borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', gap: 12, alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)', zIndex: 3 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#10b981' }} />
+                  <div><div style={{ width: 90, height: 8, background: '#fff', borderRadius: 4, marginBottom: 6 }} /><div style={{ width: 50, height: 6, background: 'rgba(255,255,255,0.5)', borderRadius: 4 }} /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Small Card: Mobile */}
+            <div className="glass-panel bento-item" style={{ gridColumn: 'span 1', padding: 0, position: 'relative', overflow: 'hidden', height: '320px', display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ position: 'absolute', top: 32, left: 32, zIndex: 10 }}>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 4, letterSpacing: '-0.02em' }}>100% Mobile</h3>
+              </div>
+              <div style={{ width: '80%', height: '70%', background: '#0f172a', margin: '0 auto -20px', borderRadius: '24px 24px 0 0', border: '4px solid #334155', borderBottom: 'none', position: 'relative', overflow: 'hidden' }}>
+                {/* Mock Mobile UI */}
+                <div style={{ padding: 16, paddingTop: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.1)' }} />
+                  </div>
+                  <div style={{ width: '100%', height: 100, background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))', borderRadius: 12, marginBottom: 16 }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ width: '50%', height: 60, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }} />
+                    <div style={{ width: '50%', height: 60, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" style={{ padding: '100px 5%', background: 'linear-gradient(to bottom, transparent, rgba(15,23,42,0.5), transparent)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, marginBottom: 16 }}>Dicono di noi</h2>
+            <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>I professionisti che hanno già rivoluzionato il loro metodo di lavoro.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 32 }}>
+            {testimonials.map((t, i) => (
+              <div key={i} className="glass-panel" style={{ padding: '32px', position: 'relative' }}>
+                <i className="ph-fill ph-quotes" style={{ position: 'absolute', top: 32, right: 32, fontSize: '3rem', color: 'rgba(255,255,255,0.03)' }} />
+                <p style={{ fontSize: '1.1rem', color: '#e2e8f0', lineHeight: 1.6, marginBottom: 32, position: 'relative', zIndex: 1 }}>
+                  "{t.text}"
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.1rem' }}>
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{t.name}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.9rem' }}>{t.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Epic CTA */}
+      <section style={{ padding: '160px 5%', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100vw', height: '100%', background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 70%)', zIndex: 0 }} />
+
+        <div className="glass-panel" style={{ maxWidth: '1000px', margin: '0 auto', padding: '80px 5%', textAlign: 'center', position: 'relative', zIndex: 10, background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9))', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <div style={{ width: 80, height: 80, background: 'rgba(99,102,241,0.1)', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#818cf8', margin: '0 auto 32px' }}>
+            <i className="ph ph-rocket-launch" />
+          </div>
+          <h2 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 900, marginBottom: 24, letterSpacing: '-0.02em' }}>
+            Pronto a trasformare<br />il tuo studio?
+          </h2>
+          <p style={{ color: '#94a3b8', fontSize: '1.2rem', marginBottom: 48, maxWidth: '500px', margin: '0 auto 48px' }}>
+            Unisciti ai professionisti che hanno smesso di rispondere al telefono e hanno iniziato a lavorare meglio.
+          </p>
+          <button className="btn-primary" style={{ fontSize: '1.2rem', padding: '20px 48px' }} onClick={() => navigate('/login')}>
+            Crea il tuo account gratuito
+          </button>
+          <div style={{ marginTop: 24, color: '#64748b', fontSize: '0.9rem' }}>Nessuna carta di credito richiesta. Setup in 2 minuti.</div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '40px 5%', background: '#030712' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontWeight: 800, fontSize: '1.2rem' }}>
+            <div style={{ background: '#6366f1', borderRadius: '8px', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1rem' }}>
+              <i className="ph ph-calendar-check" />
+            </div>
+            <span>AptBooker</span>
+          </div>
+          <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            © 2026 AptBooker. Fatto con ❤️ per i professionisti della salute.
+          </div>
+        </div>
       </footer>
     </div>
-  );
-}
-
-/* ── FEATURE SECTION ── */
-function FeatureSection() {
-  const { ref, visible } = useReveal();
-  return (
-    <section id="funzionalita" style={{ padding: '100px 5%', position: 'relative' }}>
-      <div style={{ background: 'radial-gradient(circle, #8b5cf620, transparent 70%)', borderRadius: '50%', filter: 'blur(80px)', height: 600, left: '50%', position: 'absolute', top: '10%', transform: 'translateX(-50%)', width: 600 }} />
-      <div style={{ margin: '0 auto', maxWidth: 1100, position: 'relative' }}>
-        <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`} style={{ marginBottom: 64, textAlign: 'center' }}>
-          <span className="lp-tag" style={{ marginBottom: 16, display: 'inline-block' }}>Funzionalità</span>
-          <h2 style={{ color: '#f1f5f9', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.2 }}>
-            Tutto ciò che serve,<br /><span style={{ background: 'linear-gradient(135deg,#a5b4fc,#67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>niente di superfluo.</span>
-          </h2>
-        </div>
-        <div className="lp-features-grid" style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          {features.map((f, i) => <FeatureCard key={f.title} f={f} delay={i * 100} />)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FeatureCard({ f, delay }: { f: typeof features[0]; delay: number }) {
-  const { ref, visible } = useReveal();
-  return (
-    <div ref={ref} className={`lp-reveal lp-card-hover${visible ? ' lp-visible' : ''}`}
-      style={{
-        transitionDelay: `${delay}ms`,
-        background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-        border: '1px solid #ffffff0d', borderRadius: 16, padding: '28px 24px',
-      }}>
-      <div style={{ fontSize: '2rem', marginBottom: 14 }}>{f.icon}</div>
-      <h3 style={{ color: '#f1f5f9', fontSize: '1.05rem', fontWeight: 700, marginBottom: 10 }}>{f.title}</h3>
-      <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.65 }}>{f.desc}</p>
-    </div>
-  );
-}
-
-/* ── HOW IT WORKS ── */
-function HowItWorks({ steps }: { steps: typeof steps }) {
-  const { ref, visible } = useReveal();
-  return (
-    <section id="come-funziona" style={{ padding: '100px 5%', background: '#0a0d1a' }}>
-      <div style={{ margin: '0 auto', maxWidth: 1000, textAlign: 'center' }}>
-        <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`} style={{ marginBottom: 64 }}>
-          <span className="lp-tag" style={{ marginBottom: 16, display: 'inline-block' }}>Come Funziona</span>
-          <h2 style={{ color: '#f1f5f9', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-.02em' }}>
-            Tre passi verso la <span style={{ background: 'linear-gradient(135deg,#a5b4fc,#67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>semplicità.</span>
-          </h2>
-        </div>
-        <div className="lp-steps" style={{ alignItems: 'stretch', display: 'flex', gap: 24, justifyContent: 'center' }}>
-          {steps.map((s, i) => <StepCard key={s.n} s={s} delay={i * 150} />)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StepCard({ s, delay }: { s: typeof steps[0]; delay: number }) {
-  const { ref, visible } = useReveal();
-  return (
-    <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`}
-      style={{
-        transitionDelay: `${delay}ms`, flex: 1,
-        background: 'linear-gradient(135deg,#0f172a,#1e293b)',
-        border: '1px solid #ffffff0d', borderRadius: 20, padding: '36px 28px', position: 'relative',
-      }}>
-      <div style={{
-        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-        borderRadius: 12, color: '#fff', display: 'inline-block',
-        fontSize: '.7rem', fontWeight: 800, letterSpacing: '.1em',
-        marginBottom: 20, padding: '6px 14px',
-      }}>{s.n}</div>
-      <h3 style={{ color: '#f1f5f9', fontSize: '1.15rem', fontWeight: 700, marginBottom: 12 }}>{s.title}</h3>
-      <p style={{ color: '#64748b', fontSize: '.9rem', lineHeight: 1.65 }}>{s.desc}</p>
-    </div>
-  );
-}
-
-/* ── TESTIMONIALS ── */
-function TestimonialsSection({ testimonials }: { testimonials: typeof testimonials }) {
-  const { ref, visible } = useReveal();
-  return (
-    <section id="testimonianze" style={{ padding: '100px 5%', position: 'relative' }}>
-      <div style={{ margin: '0 auto', maxWidth: 1100 }}>
-        <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`} style={{ marginBottom: 64, textAlign: 'center' }}>
-          <span className="lp-tag" style={{ marginBottom: 16, display: 'inline-block' }}>Testimonianze</span>
-          <h2 style={{ color: '#f1f5f9', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, letterSpacing: '-.02em' }}>
-            Già <span style={{ background: 'linear-gradient(135deg,#a5b4fc,#67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>amato</span> dai medici.
-          </h2>
-        </div>
-        <div className="lp-testi-grid" style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(3,1fr)' }}>
-          {testimonials.map((t, i) => <TestiCard key={t.name} t={t} delay={i * 120} />)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function TestiCard({ t, delay }: { t: typeof testimonials[0]; delay: number }) {
-  const { ref, visible } = useReveal();
-  return (
-    <div ref={ref} className={`lp-reveal lp-card-hover${visible ? ' lp-visible' : ''}`}
-      style={{
-        transitionDelay: `${delay}ms`,
-        background: 'linear-gradient(135deg,#0f172a,#1e293b)',
-        border: '1px solid #ffffff0d', borderRadius: 16, padding: '28px 24px',
-      }}>
-      <div style={{ color: '#6366f1', fontSize: '1.5rem', marginBottom: 16 }}>❝</div>
-      <p style={{ color: '#cbd5e1', fontSize: '.95rem', lineHeight: 1.7, marginBottom: 24 }}>{t.text}</p>
-      <div style={{ alignItems: 'center', display: 'flex', gap: 12 }}>
-        <div style={{
-          alignItems: 'center', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-          borderRadius: '50%', color: '#fff', display: 'flex', flexShrink: 0,
-          fontSize: '.85rem', fontWeight: 700, height: 40, justifyContent: 'center', width: 40,
-        }}>{t.name.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
-        <div>
-          <div style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '.9rem' }}>{t.name}</div>
-          <div style={{ color: '#475569', fontSize: '.8rem' }}>{t.role}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── CTA ── */
-function CTASection() {
-  const { ref, visible } = useReveal();
-  return (
-    <section style={{ padding: '100px 5%' }}>
-      <div ref={ref} className={`lp-reveal${visible ? ' lp-visible' : ''}`}
-        style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
-          border: '1px solid #6366f130', borderRadius: 24, margin: '0 auto',
-          maxWidth: 800, padding: '80px 48px', position: 'relative', textAlign: 'center', overflow: 'hidden',
-        }}>
-        <div style={{ background: 'radial-gradient(circle,#6366f140,transparent 70%)', borderRadius: '50%', filter: 'blur(40px)', height: 400, left: '50%', position: 'absolute', top: '50%', transform: 'translate(-50%,-50%)', width: 400 }} />
-        <span className="lp-tag" style={{ marginBottom: 20, display: 'inline-block', position: 'relative' }}>Inizia Oggi</span>
-        <h2 style={{ color: '#f1f5f9', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.2, marginBottom: 20, position: 'relative' }}>
-          Pronto a trasformare<br />il tuo studio?
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '1.05rem', lineHeight: 1.7, marginBottom: 40, position: 'relative' }}>
-          14 giorni gratuiti, nessuna carta di credito. Setup in 2 minuti.
-        </p>
-        <div style={{ alignItems: 'center', display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
-          <button className="lp-btn-primary" style={{ fontSize: '1.05rem', padding: '16px 40px' }}>Inizia Gratis →</button>
-          <button className="lp-btn-ghost">Parla con noi</button>
-        </div>
-      </div>
-    </section>
   );
 }

@@ -77,7 +77,7 @@ export default function DashboardPage() {
     fetchDashboardData();
 
     const channel = supabase
-      .channel('dashboard-changes')
+      .channel(`dashboard-changes-${Math.random().toString(36).substring(7)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'Booking' }, () => fetchDashboardData())
       .subscribe();
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getAvailableSlots } from '../../lib/booking-utils';
+import { createBooking } from '../../lib/api';
 import './PublicBookingForm.css';
 
 // These should be your public Supabase credentials
@@ -17,12 +18,28 @@ const SCHEDULE = {
 
 const SLOT_DURATION = 30; // minutes
 
-export default function PublicBookingForm() {
+interface PublicBookingFormProps {
+  profileId?: string;
+  initialFirstName?: string;
+  initialLastName?: string;
+  initialEmail?: string;
+  initialPhone?: string;
+  hidePersonalFields?: boolean;
+}
+
+export default function PublicBookingForm({
+  profileId,
+  initialFirstName = '',
+  initialLastName = '',
+  initialEmail = '',
+  initialPhone = '',
+  hidePersonalFields = false
+}: PublicBookingFormProps = {}) {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+    firstName: initialFirstName,
+    lastName: initialLastName,
+    email: initialEmail,
+    phone: initialPhone,
     date: '',
     time: '',
     type: 'Consultazione',
@@ -121,28 +138,27 @@ export default function PublicBookingForm() {
     setStatus({ type: 'loading' });
 
     try {
-      const { error } = await supabase
-        .from('Booking')
-        .insert([{
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          e_mail: formData.email,
-          phone_number: formData.phone,
-          booking_date: `${formData.date}T${formData.time}:00`,
-          type: formData.type,
-          notes: formData.notes,
-          booking_accepted: null, // Pending by default
-          is_deleted: false
-        }]);
+      const { success, error } = await createBooking({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        e_mail: formData.email,
+        phone_number: formData.phone,
+        booking_date: `${formData.date}T${formData.time}:00`,
+        type: formData.type,
+        notes: formData.notes,
+        booking_accepted: null, // Pending by default
+        is_deleted: false,
+        profile_id: profileId || null
+      });
 
-      if (error) throw error;
+      if (!success) throw new Error(error || 'Failed to create booking');
 
       setStatus({ type: 'success', message: 'Richiesta inviata con successo! Ti contatteremo presto.' });
       setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
+        firstName: initialFirstName,
+        lastName: initialLastName,
+        email: initialEmail,
+        phone: initialPhone,
         date: '',
         time: '',
         type: 'Consultazione',
@@ -173,27 +189,31 @@ export default function PublicBookingForm() {
           <p>Compila il modulo per richiedere una visita.</p>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>Nome *</label>
-            <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required placeholder="Es: Mario" />
-          </div>
-          <div className="form-group">
-            <label>Cognome *</label>
-            <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required placeholder="Es: Rossi" />
-          </div>
-        </div>
+        {!hidePersonalFields && (
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Nome *</label>
+                <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required placeholder="Es: Mario" />
+              </div>
+              <div className="form-group">
+                <label>Cognome *</label>
+                <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required placeholder="Es: Rossi" />
+              </div>
+            </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>Email *</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="mario.rossi@esempio.it" />
-          </div>
-          <div className="form-group">
-            <label>Telefono</label>
-            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+39 333 123 4567" />
-          </div>
-        </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Email *</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="mario.rossi@esempio.it" />
+              </div>
+              <div className="form-group">
+                <label>Telefono</label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+39 333 123 4567" />
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="form-group">
           <label>Data Preferita *</label>

@@ -27,7 +27,15 @@ export interface BookingResult {
 
 export async function createBooking(payload: BookingPayload): Promise<BookingResult> {
   try {
-    const booking_id_db = payload.booking_id_db || crypto.randomUUID();
+    const booking_id_db = payload.booking_id_db || (
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          })
+    );
     const { data, error } = await supabase
       .from('Booking')
       .insert([{
@@ -72,6 +80,21 @@ export async function fetchBookings(incomingOnly: boolean = false): Promise<{ bo
     }
 
     const { data, error } = await query.order('booking_date', { ascending: true });
+    if (error) return { error: error.message };
+    return { bookings: data || [] };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function fetchUserBookings(profileId: string): Promise<{ bookings?: BookingPayload[], error?: string }> {
+  try {
+    const { data, error } = await supabase
+      .from('Booking')
+      .select('*')
+      .eq('profile_id', profileId)
+      .eq('is_deleted', false)
+      .order('booking_date', { ascending: true });
     if (error) return { error: error.message };
     return { bookings: data || [] };
   } catch (err) {
@@ -172,6 +195,8 @@ export async function restoreBooking(id: string): Promise<BookingResult> {
 
 export interface PatientProfile {
   id: string;
+  auth_id?: string | null;
+  role?: 'owner' | 'user' | null;
   first_name: string;
   last_name: string | null;
   e_mail: string | null;

@@ -26,7 +26,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const { logout, user } = useAuth();
+  const { logout, user, role } = useAuth();
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isCollapsed));
@@ -118,21 +118,25 @@ export default function Layout({ children, headerActions }: LayoutProps) {
             </div>
           </div>
           <div className="header-right">
-            <div
-              ref={searchRef}
-              className={`header-item-wrapper ${activeDropdown === 'search' ? 'active-search' : ''}`}
-            >
-              <GlobalSearch
-                isOpen={activeDropdown === 'search'}
-                setIsOpen={(val) => setActiveDropdown(val ? 'search' : null)}
-              />
-            </div>
-            <div ref={notificationRef} className="header-item-wrapper">
-              <NotificationBell
-                isOpen={activeDropdown === 'notifications'}
-                setIsOpen={(val) => setActiveDropdown(val ? 'notifications' : null)}
-              />
-            </div>
+            {role === 'owner' && (
+              <>
+                <div
+                  ref={searchRef}
+                  className={`header-item-wrapper ${activeDropdown === 'search' ? 'active-search' : ''}`}
+                >
+                  <GlobalSearch
+                    isOpen={activeDropdown === 'search'}
+                    setIsOpen={(val) => setActiveDropdown(val ? 'search' : null)}
+                  />
+                </div>
+                <div ref={notificationRef} className="header-item-wrapper">
+                  <NotificationBell
+                    isOpen={activeDropdown === 'notifications'}
+                    setIsOpen={(val) => setActiveDropdown(val ? 'notifications' : null)}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="account-menu-container" ref={accountMenuRef}>
               <button
@@ -186,10 +190,12 @@ export default function Layout({ children, headerActions }: LayoutProps) {
                     <i className="ph ph-user" />
                     <span>{t('common.profile')}</span>
                   </Link>
-                  <Link to="/bin" className="account-item" onClick={() => setActiveDropdown(null)}>
-                    <i className="ph ph-trash" />
-                    <span>{t('common.bin')}</span>
-                  </Link>
+                  {role === 'owner' && (
+                    <Link to="/bin" className="account-item" onClick={() => setActiveDropdown(null)}>
+                      <i className="ph ph-trash" />
+                      <span>{t('common.bin')}</span>
+                    </Link>
+                  )}
 
                   <div className="account-divider"></div>
                   <button className="account-item logout" onClick={logout}>

@@ -10,6 +10,7 @@ import { useTranslation } from '../context/LanguageContext';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login } = useAuth();
@@ -86,12 +87,21 @@ export default function LoginPage() {
             <div className="input-with-icon">
               <i className="ph ph-lock" />
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 placeholder="••••••••" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                style={{ paddingRight: '48px' }}
               />
+              <button 
+                type="button" 
+                className="password-toggle-btn" 
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i className={`ph ${showPassword ? 'ph-eye-slash' : 'ph-eye'}`} />
+              </button>
             </div>
           </div>
 

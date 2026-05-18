@@ -51,7 +51,7 @@ export default function IncomingBookingsPage() {
     fetchBookingsData(); 
 
     const channel = supabase
-      .channel('incoming-booking-changes')
+      .channel(`incoming-booking-changes-${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Booking' },

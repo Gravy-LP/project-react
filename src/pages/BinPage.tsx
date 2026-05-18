@@ -39,7 +39,7 @@ export default function BinPage() {
     loadBin();
 
     const channel = supabase
-      .channel('bin-changes')
+      .channel(`bin-changes-${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Booking' },

@@ -101,7 +101,7 @@ export default function Calendar() {
     fetchApts(); 
 
     const channel = supabase
-      .channel('calendar-booking-changes')
+      .channel(`calendar-booking-changes-${Math.random().toString(36).substring(7)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Booking' },
