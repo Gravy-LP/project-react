@@ -9,6 +9,7 @@ import IncomingBookingsPage from './pages/IncomingBookingsPage';
 import RubricaPage from './pages/RubricaPage';
 import ProfilePage from './pages/ProfilePage';
 import UserBookingPage from './pages/UserBookingPage';
+import UserAppointmentsPage from './pages/UserAppointmentsPage';
 import BinPage from './pages/BinPage';
 import LoginPage from './pages/LoginPage';
 import { ThemeProvider } from './context/ThemeContext';
@@ -29,14 +30,15 @@ export default function App() {
                   <Route path="/land" element={<LandingPage />} />
 
                   {/* Protected Routes */}
-                  <Route path="/" element={<ProtectedRoute allowedRoles={['owner']}><DashboardPage /></ProtectedRoute>} />
-                  <Route path="/calendar" element={<ProtectedRoute allowedRoles={['owner']}><CalendarPage /></ProtectedRoute>} />
-                  <Route path="/incoming-bookings" element={<ProtectedRoute allowedRoles={['owner']}><IncomingBookingsPage /></ProtectedRoute>} />
-                  <Route path="/rubrica" element={<ProtectedRoute allowedRoles={['owner']}><RubricaPage /></ProtectedRoute>} />
-                  <Route path="/book" element={<ProtectedRoute allowedRoles={['owner', 'user']}><UserBookingPage /></ProtectedRoute>} />
-                  <Route path="/profile/:id" element={<ProtectedRoute allowedRoles={['owner', 'user']}><ProfilePage /></ProtectedRoute>} />
-                  <Route path="/profilo" element={<ProtectedRoute allowedRoles={['owner', 'user']}><ProfilePage /></ProtectedRoute>} />
-                  <Route path="/bin" element={<ProtectedRoute allowedRoles={['owner']}><BinPage /></ProtectedRoute>} />
+                  <Route path="/" element={<ProtectedRoute allowedRoles={['administrator', 'viewer']}><DashboardPage /></ProtectedRoute>} />
+                  <Route path="/calendar" element={<ProtectedRoute allowedRoles={['administrator', 'viewer']}><CalendarPage /></ProtectedRoute>} />
+                  <Route path="/incoming-bookings" element={<ProtectedRoute allowedRoles={['administrator', 'viewer']}><IncomingBookingsPage /></ProtectedRoute>} />
+                  <Route path="/rubrica" element={<ProtectedRoute allowedRoles={['administrator', 'viewer']}><RubricaPage /></ProtectedRoute>} />
+                  <Route path="/book" element={<ProtectedRoute allowedRoles={['administrator', 'viewer', 'user']}><UserBookingPage /></ProtectedRoute>} />
+                  <Route path="/my-appointments" element={<ProtectedRoute allowedRoles={['administrator', 'viewer', 'user']}><UserAppointmentsPage /></ProtectedRoute>} />
+                  <Route path="/profile/:id" element={<ProtectedRoute allowedRoles={['administrator', 'viewer', 'user']}><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/profilo" element={<ProtectedRoute allowedRoles={['administrator', 'viewer', 'user']}><ProfilePage /></ProtectedRoute>} />
+                  <Route path="/bin" element={<ProtectedRoute allowedRoles={['administrator', 'viewer']}><BinPage /></ProtectedRoute>} />
                 </Routes>
               </ConfirmProvider>
             </AuthProvider>

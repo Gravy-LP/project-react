@@ -205,5 +205,20 @@
     "status_rejected": "Réservation refusée avec succès !",
     "quick_actions": "Actions Rapides",
     "view_profile": "Voir le Profil"
+  },
+  "my_profile": {
+    "title": "Mon Profil",
+    "subtitle": "Gérez vos informations personnelles et les paramètres du compte.",
+    "personal_info": "Informations Personnelles",
+    "email": "Email",
+    "role": "Rôle",
+    "admin": "Administrateur",
+    "viewer": "Observateur",
+    "last_login": "Dernière connexion",
+    "account_settings": "Paramètres du Compte",
+    "security": "Sécurité",
+    "change_password": "Changer le mot de passe",
+    "app_settings": "Paramètres de l'Application",
+    "user": "Utilisateur"
   }
 }

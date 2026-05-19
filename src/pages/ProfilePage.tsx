@@ -34,7 +34,8 @@ export default function ProfilePage() {
   
   const targetId = id || currentUserProfile?.id;
   const isOwnProfile = targetId === currentUserProfile?.id;
-  const isOwner = currentUserRole === 'owner';
+  const isAdmin = currentUserRole === 'administrator';
+  const isViewer = currentUserRole === 'viewer';
 
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -311,7 +312,13 @@ export default function ProfilePage() {
           </div>
           <div className="profile-title-section">
             <h1>{patient.first_name} {patient.last_name}</h1>
-            <p className="profile-role-tag">{patient.role === 'owner' ? t('my_profile.admin') : t('common.user')}</p>
+            <p className="profile-role-tag">
+              {patient.role === 'owner' || patient.role === 'administrator'
+                ? t('my_profile.admin')
+                : patient.role === 'viewer'
+                ? t('my_profile.viewer')
+                : t('common.user')}
+            </p>
           </div>
         </header>
 
@@ -323,7 +330,7 @@ export default function ProfilePage() {
                   <i className="ph ph-user-circle" />
                   <h3>{t('my_profile.personal_info')}</h3>
                 </div>
-                {isOwner && (
+                {isAdmin && (
                   <button className="btn btn-ghost btn-sm" onClick={() => setShowEditPatientModal(true)}>
                     <i className="ph ph-pencil-simple" /> Modifica
                   </button>
@@ -345,50 +352,46 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="profile-section-card glass-panel">
-              <div className="section-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="ph ph-calendar" />
-                  <h3>I miei Appuntamenti</h3>
-                </div>
-                {isOwner && (
+            {isAdmin && (
+              <section className="profile-section-card glass-panel">
+                <div className="section-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="ph ph-calendar" />
+                    <h3>I miei Appuntamenti</h3>
+                  </div>
                   <button className="btn btn-primary btn-sm" onClick={() => setShowNewBookingModal(true)}>
                     <i className="ph ph-plus" /> {t('profile.new')}
                   </button>
-                )}
-              </div>
-              
-              {bookings.length > 0 ? (
-                <div className="appointments-list">
-                  {[...bookings].sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime()).map(appt => (
-                    <div key={appt.booking_id_db} className="appointment-card" style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <strong>{new Date(appt.booking_date || '').toLocaleDateString(getLocaleTag(language))} {new Date(appt.booking_date || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span className={`status-badge ${appt.booking_accepted ? 'accepted' : appt?.booking_accepted === false ? 'rejected' : 'pending'}`}>
-                            {appt.booking_accepted ? 'Accettato' : appt.booking_accepted === false ? 'Rifiutato' : 'In attesa'}
-                          </span>
-                          {isOwner && (
-                            <>
-                              <button onClick={() => { setSelectedBooking(appt); setShowBookingModal(true); }} className="btn btn-ghost btn-icon" style={{ padding: '4px', height: 'auto', minHeight: 'auto' }}><i className="ph ph-pencil" /></button>
-                              <button onClick={() => handleDeleteBooking(appt.booking_id_db)} className="btn btn-ghost btn-icon text-danger" style={{ padding: '4px', height: 'auto', minHeight: 'auto' }}><i className="ph ph-trash" /></button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {appt.type && <p style={{ margin: '5px 0 0', fontSize: '0.9rem', opacity: 0.8 }}>{appt.type}</p>}
-                      {appt.notes && <p style={{ margin: '5px 0 0', fontSize: '0.85rem', opacity: 0.7 }}><i className="ph ph-info" /> {appt.notes}</p>}
-                    </div>
-                  ))}
                 </div>
-              ) : (
-                <p>Nessun appuntamento registrato.</p>
-              )}
-            </section>
+                
+                {bookings.length > 0 ? (
+                  <div className="appointments-list">
+                    {[...bookings].sort((a, b) => new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime()).map(appt => (
+                      <div key={appt.booking_id_db} className="appointment-card" style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <strong>{new Date(appt.booking_date || '').toLocaleDateString(getLocaleTag(language))} {new Date(appt.booking_date || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <span className={`status-badge ${appt.booking_accepted ? 'accepted' : appt?.booking_accepted === false ? 'rejected' : 'pending'}`}>
+                              {appt.booking_accepted ? 'Accettato' : appt.booking_accepted === false ? 'Rifiutato' : 'In attesa'}
+                            </span>
+                            <button onClick={() => { setSelectedBooking(appt); setShowBookingModal(true); }} className="btn btn-ghost btn-icon" style={{ padding: '4px', height: 'auto', minHeight: 'auto' }}><i className="ph ph-pencil" /></button>
+                            <button onClick={() => handleDeleteBooking(appt.booking_id_db)} className="btn btn-ghost btn-icon text-danger" style={{ padding: '4px', height: 'auto', minHeight: 'auto' }}><i className="ph ph-trash" /></button>
+                          </div>
+                        </div>
+                        {appt.type && <p style={{ margin: '5px 0 0', fontSize: '0.9rem', opacity: 0.8 }}>{appt.type}</p>}
+                        {appt.notes && <p style={{ margin: '5px 0 0', fontSize: '0.85rem', opacity: 0.7 }}><i className="ph ph-info" /> {appt.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>Nessun appuntamento registrato.</p>
+                )}
+              </section>
+            )}
           </div>
 
           <div className="profile-side-column">
-            {isOwner && (
+            {isAdmin && (
               <section className="profile-section-card glass-panel">
                 <div className="section-header">
                   <i className="ph ph-note-pencil" />
@@ -452,7 +455,7 @@ export default function ProfilePage() {
               </section>
             )}
 
-            {isOwner && !isOwnProfile && (
+            {isAdmin && !isOwnProfile && (
               <section className="profile-section-card glass-panel" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                 <div className="section-header text-danger">
                   <i className="ph ph-warning-circle" />
@@ -468,7 +471,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {isOwner && (
+      {isAdmin && (
         <>
           <Modal isOpen={showBookingModal} onClose={() => setShowBookingModal(false)}>
             {selectedBooking && (

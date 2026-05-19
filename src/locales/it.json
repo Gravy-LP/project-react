@@ -213,6 +213,7 @@
     "email": "Email",
     "role": "Ruolo",
     "admin": "Amministratore",
+    "viewer": "Visualizzatore",
     "last_login": "Ultimo accesso",
     "account_settings": "Impostazioni Account",
     "security": "Sicurezza",

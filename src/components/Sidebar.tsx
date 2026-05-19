@@ -11,18 +11,9 @@ interface SidebarProps {
 
 import { useTranslation } from '../context/LanguageContext';
 
-export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }: SidebarProps) {
-  const [isHoverLocked, setIsHoverLocked] = useState(false);
+export default function Sidebar({ isOpen, onClose, isCollapsed }: SidebarProps) {
   const { t } = useTranslation();
   const { role } = useAuth();
-
-  const handleCollapse = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsCollapsed(!isCollapsed);
-    if (!isCollapsed) {
-      setIsHoverLocked(true);
-    }
-  };
 
   return (
     <>
@@ -32,8 +23,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
       )}
 
       <aside 
-        className={`sidebar glass-panel ${isOpen ? 'active' : ''} ${isCollapsed ? 'collapsed' : ''} ${isHoverLocked ? 'hover-locked' : ''}`}
-        onMouseLeave={() => setIsHoverLocked(false)}
+        className={`sidebar glass-panel ${isOpen ? 'active' : ''} ${isCollapsed ? 'collapsed' : ''}`}
       >
         <div className="logo-mobile-only">
           <button className="close-sidebar-btn" onClick={onClose} aria-label="Close menu">
@@ -42,7 +32,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
         </div>
 
         <nav className="nav-links">
-          {role === 'owner' && (
+          {(role === 'administrator' || role === 'viewer') && (
             <>
               <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <i className="ph ph-squares-four" />
@@ -69,6 +59,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
                 <i className="ph ph-user" />
                 <span className="sidebar-label">{t('my_profile.personal_info')}</span>
               </NavLink>
+              <NavLink to="/my-appointments" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                <i className="ph ph-calendar" />
+                <span className="sidebar-label">Le mie Prenotazioni</span>
+              </NavLink>
               <NavLink to="/book" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <i className="ph ph-calendar-plus" />
                 <span className="sidebar-label">Prenota</span>
@@ -76,13 +70,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, setIsCollapsed }
             </>
           )}
         </nav>
-
-        <div className="sidebar-footer">
-          <button className="nav-item collapse-btn" onClick={handleCollapse}>
-            <i className={isCollapsed ? "ph ph-caret-right" : "ph ph-caret-left"} />
-            <span className="sidebar-label">{isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}</span>
-          </button>
-        </div>
       </aside>
     </>
   );

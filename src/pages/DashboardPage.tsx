@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { generateAllSlots } from '../lib/booking-utils';
 import { getInitials } from '../lib/formatters';
 import { useTranslation } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import '../styles/dashboard.css';
 import '../styles/timeline.css';
 
@@ -26,6 +27,8 @@ export default function DashboardPage() {
   const [allSlotsCount, setAllSlotsCount] = useState(0);
   const [searchParams] = useSearchParams();
   const { language, t } = useTranslation();
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
   
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: string, time: string } | null>(null);
@@ -133,13 +136,15 @@ export default function DashboardPage() {
                           <span className="slot-type">{item.booking.type || t('booking.services.odontoiatria')}</span>
                         </div>
                       </div>
-                    ) : (
+                    ) : !isViewer ? (
                       <button 
                         className="slot-book-btn" 
                         onClick={() => openBookingModal(item.time)}
                       >
                         <i className="ph ph-plus" /> {t('dashboard.book')}
                       </button>
+                    ) : (
+                      <div className="slot-empty-state" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}></div>
                     )}
                   </div>
                 ))}

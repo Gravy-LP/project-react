@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
 import { fetchBookings, updateBooking, deleteBooking, ensurePatientProfileForBooking } from '../lib/api';
@@ -41,6 +42,8 @@ export default function Calendar() {
   const [selDay, setSelDay] = useState<string | null>(null);
   const [selApt, setSelApt] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState(false);
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
   const [isAnimating, setIsAnimating] = useState(false);
   
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -285,7 +288,9 @@ export default function Calendar() {
             </div>
           )) : <div className="empty-schedule"><i className="ph ph-calendar-blank" /><p>{t('calendar.no_appointments')}</p></div>}
         </div>
-        <button className="add-appt-btn btn btn-primary" onClick={() => setShowNew(true)}><i className="ph ph-plus" /> {t('calendar.new_appointment')}</button>
+        {!isViewer && (
+          <button className="add-appt-btn btn btn-primary" onClick={() => setShowNew(true)}><i className="ph ph-plus" /> {t('calendar.new_appointment')}</button>
+        )}
       </Modal>
 
       <Modal isOpen={showDet} onClose={() => { setShowDet(false); setEditing(false); }}>
@@ -307,7 +312,9 @@ export default function Calendar() {
                   <i className="ph ph-user" /> {t('calendar.go_to_profile')}
                 </button>
               )}
-              <button className="btn btn-primary" onClick={() => setEditing(true)}>{t('calendar.edit_title')}</button>
+              {!isViewer && (
+                <button className="btn btn-primary" onClick={() => setEditing(true)}>{t('calendar.edit_title')}</button>
+              )}
               <button className="btn btn-secondary" onClick={() => setShowDet(false)}>{t('common.cancel')}</button>
             </div>
           </>

@@ -11,6 +11,7 @@ import BookingFields from '../components/BookingFields';
 import DatePicker from '../components/DatePicker';
 import { useLongPress } from '../hooks/useLongPress';
 import { useTranslation } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import '../styles/rubrica.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -111,6 +112,8 @@ export default function RubricaPage() {
   const { confirm } = useConfirm();
   const navigate = useNavigate();
   const { language, t } = useTranslation();
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
   const [showModal, setShowModal] = useState(false);
   const [withBooking, setWithBooking] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -226,9 +229,11 @@ export default function RubricaPage() {
   return (
     <Layout headerActions={
       <div className="header-action-group">
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <i className="ph ph-plus" /> {t('rubrica.new_patient')}
-        </button>
+        {!isViewer && (
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <i className="ph ph-plus" /> {t('rubrica.new_patient')}
+          </button>
+        )}
         <div className="patient-count-badge">
           <i className="ph ph-users" />
           <span>{patients.length} {t('rubrica.total_patients')}</span>

@@ -9,6 +9,7 @@ import { fetchBookings, deleteBooking, updateBooking } from '../lib/api';
 import { formatPhoneNumber, getInitials } from '../lib/formatters';
 import BookingModal from '../components/BookingModal';
 import { useTranslation } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import '../styles/incoming-bookings.css';
 import '../styles/modal.css';
 import '../styles/touch-menu.css';
@@ -30,6 +31,8 @@ export default function IncomingBookingsPage() {
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { t } = useTranslation();
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -208,24 +211,31 @@ export default function IncomingBookingsPage() {
         </td>
         <td className="hide-mobile">
           <div className="table-actions">
-            {booking.booking_accepted !== true && (
-              <button className="btn btn-success btn-icon" title={t('incoming.status_accepted').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
-                <i className="ph ph-check" />
-              </button>
+            {!isViewer && (
+              <>
+                {booking.booking_accepted !== true && (
+                  <button className="btn btn-success btn-icon" title={t('incoming.status_accepted').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, true)}>
+                    <i className="ph ph-check" />
+                  </button>
+                )}
+                {booking.booking_accepted !== false && (
+                  <button className="btn btn-danger btn-icon" title={t('incoming.status_rejected').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
+                    <i className="ph ph-x" />
+                  </button>
+                )}
+                {booking.booking_accepted !== null && (
+                  <button className="btn btn-ghost btn-icon" title={t('calendar.status_pending')} onClick={() => handleUpdateStatus(booking.booking_id_db, null)}>
+                    <i className="ph ph-clock-counter-clockwise" />
+                  </button>
+                )}
+                <button className="btn btn-ghost btn-icon text-danger" title={t('common.delete')} onClick={() => handleDelete(booking.booking_id_db)}>
+                  <i className="ph ph-trash" />
+                </button>
+              </>
             )}
-            {booking.booking_accepted !== false && (
-              <button className="btn btn-danger btn-icon" title={t('incoming.status_rejected').split(' ')[0]} onClick={() => handleUpdateStatus(booking.booking_id_db, false)}>
-                <i className="ph ph-x" />
-              </button>
+            {isViewer && (
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>View only</span>
             )}
-            {booking.booking_accepted !== null && (
-              <button className="btn btn-ghost btn-icon" title={t('calendar.status_pending')} onClick={() => handleUpdateStatus(booking.booking_id_db, null)}>
-                <i className="ph ph-clock-counter-clockwise" />
-              </button>
-            )}
-            <button className="btn btn-ghost btn-icon text-danger" title={t('common.delete')} onClick={() => handleDelete(booking.booking_id_db)}>
-              <i className="ph ph-trash" />
-            </button>
           </div>
         </td>
       </tr>
@@ -234,9 +244,11 @@ export default function IncomingBookingsPage() {
 
   return (
     <Layout headerActions={
-      <button className="btn btn-primary" onClick={() => setShowNewBookingModal(true)}>
-        <i className="ph ph-plus" /> Nuova Prenotazione
-      </button>
+      !isViewer ? (
+        <button className="btn btn-primary" onClick={() => setShowNewBookingModal(true)}>
+          <i className="ph ph-plus" /> Nuova Prenotazione
+        </button>
+      ) : undefined
     }>
       <div className="glass-panel content-card">
         <div className="card-header">
@@ -338,7 +350,7 @@ export default function IncomingBookingsPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="touch-menu-header">Azioni rapida</div>
-            {(() => {
+            {!isViewer && (() => {
               const b = allBookings.find(x => x.booking_id_db === activeMenuBooking.id);
               if (!b) return null;
               return (
@@ -358,13 +370,16 @@ export default function IncomingBookingsPage() {
                       <i className="ph ph-clock-counter-clockwise" /> {t('calendar.status_pending')}
                     </button>
                   )}
+                  <div className="touch-menu-divider"></div>
+                  <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuBooking.id); setActiveMenuBooking(null); }}>
+                    <i className="ph ph-trash" /> Elimina
+                  </button>
                 </>
               );
             })()}
-            <div className="touch-menu-divider"></div>
-            <button className="touch-menu-item danger" onClick={() => { handleDelete(activeMenuBooking.id); setActiveMenuBooking(null); }}>
-              <i className="ph ph-trash" /> Elimina
-            </button>
+            {isViewer && (
+              <div style={{ padding: '12px', color: 'var(--color-text-muted)', textAlign: 'center' }}>View only</div>
+            )}
           </div>
         </div>
       )}

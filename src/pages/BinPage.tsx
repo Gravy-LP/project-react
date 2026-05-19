@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const getLocaleTag = (lang: string) => {
   switch(lang) {
@@ -23,6 +24,8 @@ export default function BinPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { language, t } = useTranslation();
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
 
   const loadBin = async () => {
     setLoading(true);
@@ -92,7 +95,7 @@ export default function BinPage() {
             <h2>{t('bin.title')}</h2>
             <p style={{ color: 'var(--color-text-muted)' }}>{t('bin.subtitle')}</p>
           </div>
-          {items.length > 0 && (
+          {items.length > 0 && !isViewer && (
             <button 
               className="btn btn-ghost text-danger" 
               onClick={async () => {
@@ -137,20 +140,27 @@ export default function BinPage() {
                     <td style={{ padding: '12px' }}>{b.booking_date ? new Date(b.booking_date).toLocaleDateString(getLocaleTag(language)) : 'N/A'}</td>
                     <td style={{ padding: '12px' }}>
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <button 
-                          className="btn btn-ghost btn-sm" 
-                          onClick={() => handleRestore(b.booking_id_db!)}
-                          title={t('bin.restore')}
-                        >
-                          <i className="ph ph-arrow-counter-clockwise" /> {t('bin.restore')}
-                        </button>
-                        <button 
-                          className="btn btn-ghost btn-sm text-danger" 
-                          onClick={() => handlePermanentDelete(b.booking_id_db!)}
-                          title={t('common.delete')}
-                        >
-                          <i className="ph ph-trash" /> {t('common.delete')}
-                        </button>
+                        {!isViewer && (
+                          <>
+                            <button 
+                              className="btn btn-ghost btn-sm" 
+                              onClick={() => handleRestore(b.booking_id_db!)}
+                              title={t('bin.restore')}
+                            >
+                              <i className="ph ph-arrow-counter-clockwise" /> {t('bin.restore')}
+                            </button>
+                            <button 
+                              className="btn btn-ghost btn-sm text-danger" 
+                              onClick={() => handlePermanentDelete(b.booking_id_db!)}
+                              title={t('common.delete')}
+                            >
+                              <i className="ph ph-trash" /> {t('common.delete')}
+                            </button>
+                          </>
+                        )}
+                        {isViewer && (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>View only</span>
+                        )}
                       </div>
                     </td>
                   </tr>
