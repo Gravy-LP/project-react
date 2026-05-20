@@ -6,11 +6,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   profile: any | null; // PatientProfile
-  role: 'administrator' | 'viewer' | 'user' | null;
+  role: 'administrator' | 'manager' | 'viewer' | 'user' | null;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
-  setRole?: (role: 'administrator' | 'viewer' | 'user' | null) => void;
+  setRole?: (role: 'administrator' | 'manager' | 'viewer' | 'user' | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
-  const [role, setRole] = useState<'administrator' | 'viewer' | 'user' | null>(null);
+  const [role, setRole] = useState<'administrator' | 'manager' | 'viewer' | 'user' | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchProfile = async (currentUser: User | null) => {
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(data);
         // Map legacy 'owner' DB value to 'administrator'
         const mappedRole = data.role === 'owner' ? 'administrator' : (data.role || 'user');
-        setRole(mappedRole as 'administrator' | 'viewer' | 'user');
+        setRole(mappedRole as 'administrator' | 'manager' | 'viewer' | 'user');
       } else {
         setProfile(null);
         setRole('user'); // default to user if no profile

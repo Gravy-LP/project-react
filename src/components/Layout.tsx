@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import GlobalSearch from './GlobalSearch';
 import NotificationBell from './NotificationBell';
+import DevTools from './DevTools';
 import { useTheme } from '../context/ThemeContext';
 import '../styles/account-menu.css';
 
@@ -23,7 +24,6 @@ export default function Layout({ children, headerActions }: LayoutProps) {
   const notificationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const { logout, user, role, setRole } = useAuth();
-  const [showDevTools, setShowDevTools] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -111,7 +111,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
             </div>
           </div>
           <div className="header-right">
-            {(role === 'administrator' || role === 'viewer') && (
+            {(role === 'administrator' || role === 'manager' || role === 'viewer') && (
               <>
                 <div
                   ref={searchRef}
@@ -183,7 +183,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
                     <i className="ph ph-user" />
                     <span>{t('common.profile')}</span>
                   </Link>
-                  {(role === 'administrator' || role === 'viewer') && (
+                  {(role === 'administrator' || role === 'manager' || role === 'viewer') && (
                     <Link to="/bin" className="account-item" onClick={() => setActiveDropdown(null)}>
                       <i className="ph ph-trash" />
                       <span>{t('common.bin')}</span>
@@ -203,76 +203,7 @@ export default function Layout({ children, headerActions }: LayoutProps) {
         {children}
       </main>
 
-      {/* DEV ROLE SWITCHER */}
-      {process.env.NODE_ENV === 'development' && setRole && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '20px',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: '10px'
-        }}>
-          {!showDevTools ? (
-            <button 
-              onClick={() => setShowDevTools(true)}
-              style={{
-                background: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-              }}
-              title="Dev Tools"
-            >
-              <i className="ph ph-wrench" />
-            </button>
-          ) : (
-            <div style={{
-              background: 'rgba(0,0,0,0.8)',
-              border: '1px solid var(--color-primary)',
-              padding: '10px',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '5px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ margin: 0, fontSize: '12px', color: '#fff', fontWeight: 'bold' }}>DEV: Role Switcher</p>
-                <button 
-                  onClick={() => setShowDevTools(false)}
-                  style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '0 5px' }}
-                >
-                  <i className="ph ph-x" />
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <button 
-                  style={{ padding: '5px', fontSize: '12px', background: role === 'administrator' ? 'var(--color-primary)' : 'transparent', color: '#fff', border: '1px solid var(--color-primary)', borderRadius: '4px', cursor: 'pointer' }}
-                  onClick={() => setRole('administrator')}
-                >Admin</button>
-                <button 
-                  style={{ padding: '5px', fontSize: '12px', background: role === 'viewer' ? 'var(--color-primary)' : 'transparent', color: '#fff', border: '1px solid var(--color-primary)', borderRadius: '4px', cursor: 'pointer' }}
-                  onClick={() => setRole('viewer')}
-                >Viewer</button>
-                <button 
-                  style={{ padding: '5px', fontSize: '12px', background: role === 'user' ? 'var(--color-primary)' : 'transparent', color: '#fff', border: '1px solid var(--color-primary)', borderRadius: '4px', cursor: 'pointer' }}
-                  onClick={() => setRole('user')}
-                >User</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <DevTools />
     </div>
   );
 }

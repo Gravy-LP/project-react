@@ -34,7 +34,7 @@ export default function ProfilePage() {
   
   const targetId = id || currentUserProfile?.id;
   const isOwnProfile = targetId === currentUserProfile?.id;
-  const isAdmin = currentUserRole === 'administrator';
+  const isAdmin = currentUserRole === 'administrator' || currentUserRole === 'manager';
   const isViewer = currentUserRole === 'viewer';
 
   const [patient, setPatient] = useState<PatientProfile | null>(null);
@@ -313,7 +313,7 @@ export default function ProfilePage() {
           <div className="profile-title-section">
             <h1>{patient.first_name} {patient.last_name}</h1>
             <p className="profile-role-tag">
-              {patient.role === 'owner' || patient.role === 'administrator'
+              {patient.role === 'owner' || patient.role === 'administrator' || patient.role === 'manager'
                 ? t('my_profile.admin')
                 : patient.role === 'viewer'
                 ? t('my_profile.viewer')

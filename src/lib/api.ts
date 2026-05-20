@@ -196,7 +196,7 @@ export async function restoreBooking(id: string): Promise<BookingResult> {
 export interface PatientProfile {
   id: string;
   auth_id?: string | null;
-  role?: 'owner' | 'administrator' | 'viewer' | 'user' | null;
+  role?: 'owner' | 'administrator' | 'manager' | 'viewer' | 'user' | null;
   first_name: string;
   last_name: string | null;
   e_mail: string | null;

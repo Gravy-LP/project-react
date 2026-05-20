@@ -32,7 +32,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }: SidebarProps) 
         </div>
 
         <nav className="nav-links">
-          {(role === 'administrator' || role === 'viewer') && (
+          {(role === 'administrator' || role === 'manager' || role === 'viewer') && (
             <>
               <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <i className="ph ph-squares-four" />
